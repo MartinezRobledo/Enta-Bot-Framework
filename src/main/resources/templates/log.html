@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+    <meta charset='UTF-8'>
+    <meta content='width=device-width, initial-scale=1.0' name='viewport'>
+    <title>Bot Framework Logs</title>
+    <style>
+        :root {
+            --primary: #4285f4;
+            --primary-light: #8ab4f8;
+            --secondary: #34a853;
+            --secondary-light: #82d893;
+            --danger: #ea4335;
+            --warning: #fbbc05;
+            --surface: #ffffff;
+            --background: #f8f9fa;
+            --text-primary: #202124;
+            --text-secondary: #5f6368;
+            --border: #dadce0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, Oxygen, Ubuntu, 'Helvetica Neue', sans-serif;
+            background-color: var(--background);
+            color: var(--text-primary);
+            line-height: 1.5;
+            padding: 20px;
+            margin: 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: var(--surface);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+        }
+
+        /* Simple sticky header implementation */
+        th {
+            padding: 12px 15px;
+            background-color: var(--primary);
+            color: white;
+            position: -webkit-sticky;
+            position: sticky;
+            top: 0;
+            text-align: left;
+            font-weight: 500;
+            z-index: 10;
+        }
+
+        td {
+            padding: 10px 15px;
+            border-bottom: 1px solid var(--border);
+            vertical-align: middle;
+        }
+
+        tr:nth-child(even) {
+            background-color: rgba(0,0,0,0.02);
+        }
+
+        tr:hover {
+            background-color: rgba(0,0,0,0.05);
+        }
+
+        .level-INFO {
+            color: var(--secondary);
+            font-weight: 500;
+        }
+
+        .level-WARN {
+            color: var(--warning);
+            font-weight: 500;
+        }
+
+        .level-ERROR {
+            color: var(--danger);
+            font-weight: 500;
+        }
+
+        .img-link, .vars-link {
+            display: inline-block;
+            padding: 6px 12px;
+            background-color: var(--primary);
+            color: black !important;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: 500;
+            transition: background-color 0.2s;
+        }
+
+        .img-link:hover, .vars-link:hover {
+            background-color: var(--primary-light);
+        }
+
+        .vars-link {
+            background-color: var(--secondary);
+        }
+
+        .vars-link:hover {
+            background-color: var(--secondary-light);
+        }
+
+        .variable-count {
+            color: white !important;
+        }
+
+        @media (max-width: 768px) {
+            th, td {
+                padding: 8px 10px;
+            }
+
+            .responsive-hide {
+                display: none;
+            }
+        }
+
+        .controls {
+            margin-bottom: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .controls label {
+            font-weight: 500;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
+        .controls select,
+        .controls input[type="text"],
+        .controls input[type="datetime-local"] {
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-size: 1rem;
+            min-width: 150px;
+            box-sizing: border-box;
+        }
+
+        .controls select:focus,
+        .controls input[type="text"]:focus,
+        .controls input[type="datetime-local"]:focus {
+            outline: none;
+            border-color: var(--primary-light);
+            box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
+        }
+
+        @media (max-width: 768px) {
+            .controls { flex-direction: column; align-items: flex-start; }
+            .controls select,
+            .controls input[type="text"],
+            .controls input[type="datetime-local"] { width: 100%; }
+        }
+
+    </style>
+    <script defer>
+        function filterTable() {
+            const levelFilter = document.getElementById('levelFilter').value.toUpperCase();
+            const textFilter = document.getElementById('textFilter').value.toLowerCase();
+            const startDateInput = document.getElementById('startDateFilter').value;
+            const endDateInput = document.getElementById('endDateFilter').value;
+
+            const startDate = startDateInput ? new Date(startDateInput) : null;
+            const endDate = endDateInput ? new Date(endDateInput) : null;
+
+            const tableBody = document.getElementById('logTableBody');
+            const rows = tableBody.getElementsByTagName('tr');
+
+            for (let i = 0; i < rows.length; i++) {
+                const row = rows[i];
+                const levelCell = row.cells[1];
+                const datetimeCell = row.cells[0];
+                const rowText = row.innerText.toLowerCase();
+                let rowDatetime = new Date(datetimeCell.innerText);
+
+                let levelMatch = (levelFilter === 'ALL') || (levelCell.innerText.toUpperCase() === levelFilter);
+                let textMatch = !textFilter || rowText.includes(textFilter);
+                let dateMatch = true;
+
+                if (rowDatetime) {
+                    if (startDate && rowDatetime < startDate) dateMatch = false;
+                    if (endDate && rowDatetime > endDate) dateMatch = false;
+                } else if (startDate || endDate) {
+                    dateMatch = false;
+                }
+
+                row.style.display = (levelMatch && textMatch && dateMatch) ? '' : 'none';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', filterTable);
+    </script>
+</head>
+<body>
+<div class="controls">
+    <label for="levelFilter">Filtrar por Nivel:</label>
+    <select id='levelFilter' onchange='filterTable()'>
+        <option value='ALL'>ALL</option>
+        <option value='INFO'>INFO</option>
+        <option value='WARN'>WARN</option>
+        <option value='ERROR'>ERROR</option>
+    </select>
+
+    <label for="textFilter">Buscar:</label>
+    <input type="text" id="textFilter" onkeyup="filterTable()" placeholder="Buscar en la tabla...">
+
+    <label for="startDateFilter">Desde:</label>
+    <input type="datetime-local" id="startDateFilter" onchange="filterTable()">
+
+    <label for="endDateFilter">Hasta:</label>
+    <input type="datetime-local" id="endDateFilter" onchange="filterTable()">
+</div>
+<table>
+    <thead>
+    <tr>
+        <th>Datetime</th>
+        <th>Level</th>
+        <th>Source</th>
+        <th class="responsive-hide">Machine</th>
+        <th class="responsive-hide">User</th>
+        <th>Message</th>
+        <th>Variables</th>
+        <th>Screenshot</th>
+    </tr>
+    </thead>
+    <tbody id="logTableBody">
