@@ -15,79 +15,91 @@ plugins {
 	id 'java'
 }
 
-configure(allprojects){
+configure(allprojects) {
 
-	apply plugin: 'com.github.johnrengelman.shadow'
-	apply plugin: "com.automationanywhere.command-codegen"
+    apply plugin: 'com.github.johnrengelman.shadow'
+    apply plugin: "com.automationanywhere.command-codegen"
 
-	ext {
-		groupName = 'com.automationanywhere'
-		testNgVersion = '7.7.0'
-		loggerVersion = '2.24.3'
-		jnaVersion = '5.3.1'
-		version '1.0.0'
-	}
-	group "$groupName"
+    ext {
+        groupName = 'com.automationanywhere'
+        testNgVersion = '7.7.0'
+        loggerVersion = '2.24.3'
+        jnaVersion = '5.3.1'
+        version '1.0.1'
+    }
+    group "$groupName"
 
-	sourceCompatibility = JavaVersion.VERSION_11
+    sourceCompatibility = JavaVersion.VERSION_11
 
-	compileJava.options.encoding = 'UTF-8'
-	compileTestJava.options.encoding = 'UTF-8'
+    compileJava.options.encoding = 'UTF-8'
+    compileTestJava.options.encoding = 'UTF-8'
 
-	repositories {
-		mavenCentral()
-		flatDir {
-			dirs 'libs'
-		}
-	}
+    repositories {
+        mavenCentral()
+        flatDir {
+            dirs 'libs'
+        }
+    }
 
-	packageJson{
-		artifactName = project.name
-		group = "$groupName"
-		author = "Adrián Martinez"
-		generatePackageWithDateTime = false
-	}
 
-	jar.dependsOn commandCodeGen
+    packageJson {
+        artifactName = project.name
+        group = "$groupName"
+        author = "Adrián Martinez"
+        generatePackageWithDateTime = true
+    }
 
-	shadowJar {
-		archiveBaseName = project.name
-		classifier = null
-		mergeServiceFiles('META-INF/spring.*')
-		mergeServiceFiles('META-INF/services/java.sql.Driver')
-		zip64 = true
-		exclude 'META-INF/MANIFEST.MF'
-		exclude 'META-INF/*.SF'
-		exclude 'META-INF/*.DSA'
-		exclude 'META-INF/*.RSA'
-		relocate 'org.apache.commons.io', 'botframework.shaded.commons.io'
-	}
+    jar.dependsOn commandCodeGen
 
-	dependencies {
-		annotationProcessor name: 'package-compileonly-sdk', version: '1.5.0'
-		compileOnly name: 'package-compileonly-sdk', version: '1.5.0'
+    shadowJar {
+        // En Gradle 7 podés usar set(...) (recomendado) o asignación clásica.
+        archiveBaseName.set(project.name)
+        archiveClassifier.set("")          // 👉 genera <nombre>-<version>.jar ya sombreado
 
-		implementation name: 'package-runtime-sdk', version: '1.0.0'
-		testImplementation name: 'package-compileonly-sdk', version: '1.5.0'
-		testImplementation group: "org.testng", name:"testng", version: "$testNgVersion"
+        // Importante para JDBC: fusiona archivos de servicios (descubrir el driver)
+        mergeServiceFiles('META-INF/spring.*')
+        mergeServiceFiles('META-INF/services/java.sql.Driver')
 
-		testImplementation 'com.google.protobuf:protobuf-java:4.30.2' //table,record type use this internally
+        zip64 = true
 
-		// https://mvnrepository.com/artifact/org.json/json
-		implementation 'org.json:json:20250107'
+        exclude 'META-INF/MANIFEST.MF'
+        exclude 'META-INF/*.SF'
+        exclude 'META-INF/*.DSA'
+        exclude 'META-INF/*.RSA'
 
-		// https://mvnrepository.com/artifact/org.apache.logging.log4j/log4j-api
-		implementation group: "org.apache.logging.log4j", name: "log4j-api", version: "$loggerVersion"
-		// https://mvnrepository.com/artifact/org.apache.logging.log4j/log4j-core
-		implementation group: "org.apache.logging.log4j", name: "log4j-core", version: "$loggerVersion"
+        relocate 'org.apache.commons.io', 'botframework.shaded.commons.io'
+    }
 
-		// https://mvnrepository.com/artifact/commons-io/commons-io
-		implementation 'commons-io:commons-io:2.19.0'
-		// https://mvnrepository.com/artifact/org.apache.poi/poi-ooxml
-		implementation 'org.apache.poi:poi-ooxml:5.4.1'
+// Para que el build produzca el shadow JAR “final”
+    tasks.named('build') { dependsOn tasks.shadowJar }
 
-		// https://mvnrepository.com/artifact/org.apache.commons/commons-csv
-		implementation 'org.apache.commons:commons-csv:1.14.0'
-	}
+// Asegurá que el codegen corra antes del sombreado (tu jar ya dependía del codegen)
+    tasks.named('shadowJar') { dependsOn tasks.named('commandCodeGen') }
+
+
+    dependencies {
+        annotationProcessor name: 'package-compileonly-sdk', version: '1.5.0'
+        compileOnly        name: 'package-compileonly-sdk', version: '1.5.0'
+
+        implementation     name: 'package-runtime-sdk',      version: '1.0.0'
+
+        testImplementation name: 'package-compileonly-sdk',  version: '1.5.0'
+        testImplementation group: "org.testng", name:"testng", version: "$testNgVersion"
+        testImplementation 'com.google.protobuf:protobuf-java:4.30.2' // table/record
+
+        implementation 'org.json:json:20250107'
+        implementation group: "org.apache.logging.log4j", name: "log4j-api",  version: "$loggerVersion"
+        implementation group: "org.apache.logging.log4j", name: "log4j-core", version: "$loggerVersion"
+        implementation 'commons-io:commons-io:2.19.0'
+        implementation 'org.apache.poi:poi-ooxml:5.4.1'
+        implementation 'org.apache.commons:commons-csv:1.14.0'
+
+        // ⬇ Driver JDBC para MS Access (trae Jackcess, HSQLDB, etc. como transitivas)
+        implementation 'net.sf.ucanaccess:ucanaccess:5.0.1'
+
+        // Solo si algún día abrís .accdb encriptados:
+        // implementation 'com.healthmarketscience.jackcess:jackcess-encrypt:3.0.1'
+    }
+
 
 }
