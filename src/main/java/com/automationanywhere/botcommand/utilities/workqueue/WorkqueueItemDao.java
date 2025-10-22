@@ -477,8 +477,221 @@ public class WorkqueueItemDao {
 
 
     //============================================================
+    //      Modificadores de Item Data en Stagging
+    //============================================================
+
+    //
+    // --- Inserciones en bloque de Item Data ---
+    //   Reglas: WORKING + no diferido + falla si clave existe
+    //
+    public WorkItem insertDataFieldsById(long itemId, Map<String,String> dataToInsert) throws SQLException {
+        if (dataToInsert == null || dataToInsert.isEmpty())
+            return buildWorkItemById(itemId); // nada que hacer
+
+        final Timestamp now = nowTs();
+        boolean prevAuto = conn.getAutoCommit();
+        try {
+            conn.setAutoCommit(false);
+
+            // Validación de estado
+            ModState st = fetchStateById(itemId);
+            if (st == null || !ST_WORKING.equals(st.status) || (st.deferUntil != null && st.deferUntil.after(now))) {
+                throw explainNotUpdatableById(itemId, st, now);
+            }
+
+            // Duplicados en BD
+            String existsSql = "SELECT " + COL_D_KEY + " FROM " + TBL_DATA + " WHERE " + COL_D_ITEM_ID + "=?";
+            try (PreparedStatement ps = conn.prepareStatement(existsSql)) {
+                ps.setLong(1, itemId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    java.util.HashSet<String> existing = new java.util.HashSet<>();
+                    while (rs.next()) existing.add(rs.getString(1));
+                    for (String k : dataToInsert.keySet()) {
+                        if (existing.contains(k)) {
+                            throw new SQLException("El campo '" + k + "' ya existe para el ítem Id=" + itemId + ".");
+                        }
+                    }
+                }
+            }
+
+            // Insert masivo (uno a uno, misma transacción)
+            String ins = "INSERT INTO " + TBL_DATA + " (" + COL_D_ITEM_ID + "," + COL_D_KEY + "," + COL_D_VALUE + ") VALUES (?,?,?)";
+            try (PreparedStatement ps = conn.prepareStatement(ins)) {
+                for (Map.Entry<String,String> e : dataToInsert.entrySet()) {
+                    ps.setLong(1, itemId);
+                    ps.setString(2, e.getKey());
+                    ps.setString(3, e.getValue());
+                    ps.addBatch();
+                }
+                ps.executeBatch();
+            }
+
+            // Actualizar [Last Updated] una sola vez
+            String upd = "UPDATE " + TBL_WQ + " SET " + COL_UPDATED + "=? WHERE " + COL_ID + "=?";
+            try (PreparedStatement ps = conn.prepareStatement(upd)) {
+                ps.setTimestamp(1, now);
+                ps.setLong(2, itemId);
+                ps.executeUpdate();
+            }
+
+            conn.commit();
+            return buildWorkItemById(itemId);
+        } catch (SQLException ex) {
+            conn.rollback();
+            throw ex;
+        } finally {
+            conn.setAutoCommit(prevAuto);
+        }
+    }
+
+    public WorkItem insertDataFieldsByKey(String itemKey, Map<String,String> dataToInsert) throws SQLException {
+        if (itemKey == null || itemKey.isBlank())
+            throw new SQLException("Item Key es obligatorio.");
+        if (dataToInsert == null || dataToInsert.isEmpty())
+            return buildWorkItemByKey(itemKey); // nada que hacer
+
+        final Timestamp now = nowTs();
+        boolean prevAuto = conn.getAutoCommit();
+        try {
+            conn.setAutoCommit(false);
+
+            // Traer Id + estado + deferUntil
+            Long id = null; String status = null; Timestamp deferUntil = null;
+            String sel = "SELECT " + COL_ID + "," + COL_STATUS + "," + COL_DEFER_UNTIL + " FROM " + TBL_WQ + " WHERE " + COL_KEY + "=?";
+            try (PreparedStatement ps = conn.prepareStatement(sel)) {
+                ps.setString(1, itemKey);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (!rs.next()) throw new SQLException("Item no encontrado (Key): " + itemKey);
+                    id = rs.getLong(1);
+                    status = rs.getString(2);
+                    deferUntil = rs.getTimestamp(3);
+                }
+            }
+
+            boolean deferred = (deferUntil != null && deferUntil.after(now));
+            if (!ST_WORKING.equals(status) || deferred) {
+                throw explainNotUpdatableByKey(itemKey, new ModState(status, deferUntil), now);
+            }
+
+            // Duplicados en BD
+            String existsSql = "SELECT " + COL_D_KEY + " FROM " + TBL_DATA + " WHERE " + COL_D_ITEM_ID + "=?";
+            try (PreparedStatement ps = conn.prepareStatement(existsSql)) {
+                ps.setLong(1, id);
+                try (ResultSet rs = ps.executeQuery()) {
+                    java.util.HashSet<String> existing = new java.util.HashSet<>();
+                    while (rs.next()) existing.add(rs.getString(1));
+                    for (String k : dataToInsert.keySet()) {
+                        if (existing.contains(k)) {
+                            throw new SQLException("El campo '" + k + "' ya existe para el ítem Key='" + itemKey + "'.");
+                        }
+                    }
+                }
+            }
+
+            // Insert masivo
+            String ins = "INSERT INTO " + TBL_DATA + " (" + COL_D_ITEM_ID + "," + COL_D_KEY + "," + COL_D_VALUE + ") VALUES (?,?,?)";
+            try (PreparedStatement ps = conn.prepareStatement(ins)) {
+                for (Map.Entry<String,String> e : dataToInsert.entrySet()) {
+                    ps.setLong(1, id);
+                    ps.setString(2, e.getKey());
+                    ps.setString(3, e.getValue());
+                    ps.addBatch();
+                }
+                ps.executeBatch();
+            }
+
+            // Actualizar [Last Updated]
+            String upd = "UPDATE " + TBL_WQ + " SET " + COL_UPDATED + "=? WHERE " + COL_ID + "=?";
+            try (PreparedStatement ps = conn.prepareStatement(upd)) {
+                ps.setTimestamp(1, now);
+                ps.setLong(2, id);
+                ps.executeUpdate();
+            }
+
+            conn.commit();
+            return buildWorkItemByKey(itemKey);
+        } catch (SQLException ex) {
+            conn.rollback();
+            throw ex;
+        } finally {
+            conn.setAutoCommit(prevAuto);
+        }
+    }
+
+    //===========================================================
+    //              Maintain Queue
+    //===========================================================
+
+    // --- Resultado de la purga ---
+    public static final class DeletedStats {
+        public final int itemsDeleted;
+        public final int dataRowsDeleted;
+        public final Timestamp cutoff;
+        public DeletedStats(int itemsDeleted, int dataRowsDeleted, Timestamp cutoff) {
+            this.itemsDeleted = itemsDeleted;
+            this.dataRowsDeleted = dataRowsDeleted;
+            this.cutoff = cutoff;
+        }
+    }
+
+    /**
+     * Borra ítems y su [Item Data] con [Created Date] < cutoff.
+     * - Primero borra [Item Data] (JOIN con [workqueue]),
+     * - luego borra de [workqueue].
+     */
+    public DeletedStats purgeOldItemsByCreatedDate(Timestamp cutoff) throws SQLException {
+        if (cutoff == null) throw new SQLException("La fecha de corte es obligatoria.");
+
+        boolean prevAuto = conn.getAutoCommit();
+        try {
+            conn.setAutoCommit(false);
+
+            // 1) Borrar Item Data relacionado a los ítems a purgar
+            String delData = "DELETE d.* FROM " + TBL_DATA + " AS d "
+                    + "INNER JOIN " + TBL_WQ + " AS w ON d." + COL_D_ITEM_ID + " = w." + COL_ID + " "
+                    + "WHERE w." + COL_CREATED + " < ?";
+            int dataRowsDeleted;
+            try (PreparedStatement ps = conn.prepareStatement(delData)) {
+                ps.setTimestamp(1, cutoff);
+                dataRowsDeleted = ps.executeUpdate();
+            }
+
+            // 2) Borrar ítems en workqueue
+            String delItems = "DELETE FROM " + TBL_WQ + " WHERE " + COL_CREATED + " < ?";
+            int itemsDeleted;
+            try (PreparedStatement ps = conn.prepareStatement(delItems)) {
+                ps.setTimestamp(1, cutoff);
+                itemsDeleted = ps.executeUpdate();
+            }
+
+            conn.commit();
+            return new DeletedStats(itemsDeleted, dataRowsDeleted, cutoff);
+
+        } catch (SQLException ex) {
+            conn.rollback();
+            throw ex;
+        } finally {
+            conn.setAutoCommit(prevAuto);
+        }
+    }
+
+
+
+
+    //============================================================
     //                  HELPERS
     //============================================================
+    //
+    // --- Lecturas públicas, reusando builders privados ---
+    //
+    public WorkItem readWorkItemById(long id) throws SQLException {
+        return buildWorkItemById(id);
+    }
+
+    public WorkItem readWorkItemByKey(String key) throws SQLException {
+        return buildWorkItemByKey(key);
+    }
+
     // Carga WorkItem por ID (sin exponer [Status])
     private WorkItem buildWorkItemById(long id) throws SQLException {
         String sql = "SELECT " + COL_KEY + "," + COL_STATUS_WF + "," + COL_STEP_WF +

@@ -16,9 +16,11 @@ import java.math.RoundingMode;
 @BotCommand
 @CommandPkg(
         name = "string_to_number_smart",
-        label = "String → Number (Smart)",
+        label = "String → Number",
         node_label = "Parsear {{amount}} con {{decimalPlaces}} decimales",
         description = "Valida y convierte un importe (String) a NUMBER con reglas estrictas y escala configurable",
+        group_label = "Conversion",
+        icon = "conversion.svg",
         return_type = DataType.NUMBER,
         return_label = "Importe numérico"
 )
@@ -74,6 +76,9 @@ public class StringToNumberSmart {
                 throw new BotCommandException("Las comillas solo pueden envolver el valor completo.");
             }
         }
+
+        // 0.5) Eliminar TODOS los espacios (incluye tabs y NBSP/NNBSP) antes de validar
+        s = s.replaceAll("[\\s\\u00A0\\u202F]+", "");
 
         // 1) Chequeo de charset permitido
         if (!s.matches("^[0-9\\.,\\$\\(\\)\\-]+$")) {

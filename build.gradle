@@ -54,7 +54,7 @@ configure(allprojects) {
     shadowJar {
         // En Gradle 7 podés usar set(...) (recomendado) o asignación clásica.
         archiveBaseName.set(project.name)
-        archiveClassifier.set("")          // 👉 genera <nombre>-<version>.jar ya sombreado
+        archiveClassifier.set("")          // genera <nombre>-<version>.jar
 
         // Importante para JDBC: fusiona archivos de servicios (descubrir el driver)
         mergeServiceFiles('META-INF/spring.*')
