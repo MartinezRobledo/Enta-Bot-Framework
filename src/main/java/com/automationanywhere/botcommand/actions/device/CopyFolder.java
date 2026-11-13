@@ -107,8 +107,8 @@ public class CopyFolder {
 
                         boolean existedBefore = Files.exists(destFile);
                         CopyOption[] options = overwrite
-                                ? new CopyOption[]{StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES}
-                                : new CopyOption[]{StandardCopyOption.COPY_ATTRIBUTES};
+                                ? new CopyOption[]{StandardCopyOption.REPLACE_EXISTING}
+                                : new CopyOption[0];
 
                         Files.copy(file, destFile, options);
 
