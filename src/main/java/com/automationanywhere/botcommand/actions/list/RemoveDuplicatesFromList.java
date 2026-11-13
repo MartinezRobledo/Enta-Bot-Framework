@@ -17,6 +17,7 @@ import com.automationanywhere.commandsdk.model.DataType;
 import java.util.LinkedHashSet;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 @BotCommand
 @CommandPkg(
@@ -41,21 +42,30 @@ public class RemoveDuplicatesFromList {
     ) {
         try {
             if (inputList == null) {
+                // Respetamos @NotEmpty, pero agregamos defensa
                 throw new BotCommandException("La lista no puede ser nula.");
             }
-            ArrayList<StringValue> output = new ArrayList<StringValue>();
-            LinkedHashSet<String> seen = new LinkedHashSet<String>();
+
+            List<StringValue> output = new ArrayList<>();
+            Set<String> seen = new LinkedHashSet<>(); // preserva orden de inserción
+
             for (Value v : inputList) {
-                String raw = v == null || v.get() == null ? "" : v.get().toString();
+                // toString sobre el payload de Value; segura para StringValue y otros tipos
+                String raw = (v == null || v.get() == null) ? "" : v.get().toString();
                 String trimmed = raw.trim();
-                if (!seen.add(trimmed)) continue;
-                output.add(new StringValue(trimmed));
+
+                // case-sensitive: "A" y "a" se consideran distintos
+                if (seen.add(trimmed)) {
+                    output.add(new StringValue(trimmed));
+                }
             }
+
             ListValue lv = new ListValue();
-            lv.set((List<Value>)new ArrayList<Value>(output));
+            // ListValue#set espera List<Value>
+            lv.set(new ArrayList<>(output));
             return lv;
-        }
-        catch (Exception e) {
+
+        } catch (Exception e) {
             throw new BotCommandException(e.getMessage());
         }
     }

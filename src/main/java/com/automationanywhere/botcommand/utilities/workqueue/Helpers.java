@@ -1,7 +1,5 @@
 package com.automationanywhere.botcommand.utilities.workqueue;
 
-import com.automationanywhere.botcommand.utilities.workqueue.WorkqueueItemDao;
-
 import com.automationanywhere.botcommand.data.Value;
 import com.automationanywhere.botcommand.data.impl.DictionaryValue;
 import com.automationanywhere.botcommand.data.impl.NumberValue;
@@ -14,18 +12,28 @@ import java.util.Map;
 public class Helpers {
 
     public static DictionaryValue toDictionary(WorkqueueItemDao.WorkItem item) {
-        LinkedHashMap<String, Value> root = new LinkedHashMap<String, Value>();
+        Map<String, Value> root = new LinkedHashMap<>();
+
+        // Id
         root.put("Id", new NumberValue(BigDecimal.valueOf(item.id)));
-        Helpers.putString(root, "Key", item.key);
-        Helpers.putString(root, "StepWorkflow", item.stepWorkflow);
+
+        // Key / StepWorkflow como String
+        putString(root, "Key", item.key);
+        putString(root, "StepWorkflow", item.stepWorkflow);
+
+        // StatusWorkflow como Number (Long). Si es null, no se agrega la clave.
         if (item.statusWorkflow != null) {
-            root.put("StatusWorkflow", new NumberValue(BigDecimal.valueOf(item.statusWorkflow)));
+            root.put("StatusWorkflow",
+                    new NumberValue(BigDecimal.valueOf(item.statusWorkflow)));
         }
-        LinkedHashMap<String, Value> dataMap = new LinkedHashMap<String, Value>();
+
+        // Data: diccionario anidado
+        Map<String, Value> dataMap = new LinkedHashMap<>();
         if (item.data != null) {
-            item.data.forEach((k, v) -> dataMap.put((String)k, new StringValue(v == null ? "" : v)));
+            item.data.forEach((k, v) -> dataMap.put(k, new StringValue(v == null ? "" : v)));
         }
         root.put("Data", new DictionaryValue(dataMap));
+
         return new DictionaryValue(root);
     }
 

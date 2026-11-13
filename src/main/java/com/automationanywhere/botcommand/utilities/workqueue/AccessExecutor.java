@@ -11,13 +11,11 @@ public class AccessExecutor {
         try {
             Class.forName(DRIVER);
             String url = "jdbc:ucanaccess://" + filePath + ";immediatelyReleaseResources=true";
-            try (Connection conn = DriverManager.getConnection(url);){
-                conn.setAutoCommit(true);
-                T t = action.apply(conn);
-                return t;
+            try (Connection conn = DriverManager.getConnection(url)) {
+                conn.setAutoCommit(true); // simplifica
+                return action.apply(conn);
             }
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             throw new RuntimeException("Error ejecutando acción sobre Access: " + e.getMessage(), e);
         }
     }
@@ -28,10 +26,7 @@ public class AccessExecutor {
     }
 
     public static void executeVoidWithConnection(String filePath, SqlConsumer<Connection> action) {
-        AccessExecutor.executeWithConnection(filePath, conn -> {
-            action.accept((Connection)conn);
-            return null;
-        });
+        executeWithConnection(filePath, conn -> { action.accept(conn); return null; });
     }
 
     @FunctionalInterface

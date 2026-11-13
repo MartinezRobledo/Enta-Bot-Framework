@@ -1,12 +1,5 @@
 package com.automationanywhere.botcommand.utilities.screen;
 
-import org.apache.commons.io.FilenameUtils;
-import java.awt.Dimension;
-import java.awt.Rectangle;
-import java.awt.Robot;
-import java.awt.Toolkit;
-import java.awt.image.RenderedImage;
-
 import com.automationanywhere.botcommand.exception.BotCommandException;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -27,19 +20,21 @@ public class CaptureScreen {
             if (StringUtils.isBlank(filePath)) {
                 throw new BotCommandException("Empty screenshot path provided");
             }
-            Path path = Paths.get(filePath, new String[0]);
+
+            Path path = Paths.get(filePath);
             File file = path.toFile();
+
             if (!isOverwriteFile && file.exists()) {
-                throw new BotCommandException("Screenshot path already exists " + String.valueOf(path));
+                throw new BotCommandException("Screenshot path already exists " + path);
             }
+
             Robot robot = new Robot();
             Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
             Rectangle screenRectangle = new Rectangle(screenSize);
             BufferedImage image = robot.createScreenCapture(screenRectangle);
             String extension = FilenameUtils.getExtension(filePath);
-            CaptureScreen.saveFile(image, extension, file);
-        }
-        catch (Exception ex) {
+            saveFile(image, extension, file);
+        } catch (Exception ex) {
             throw new BotCommandException("Unable to save screenshot " + ex.getMessage());
         }
     }
@@ -48,6 +43,8 @@ public class CaptureScreen {
         if ("wmf".equalsIgnoreCase(extension)) {
             extension = "png";
         }
-        ImageIO.write((RenderedImage)screenCapture, extension, fileToSave);
+
+        ImageIO.write(screenCapture, extension, fileToSave);
     }
 }
+

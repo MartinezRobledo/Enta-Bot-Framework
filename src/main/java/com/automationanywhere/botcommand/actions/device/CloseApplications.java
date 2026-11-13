@@ -38,14 +38,13 @@ public class CloseApplications {
             if (killTaskList == null) {
                 return;
             }
-            ArrayList<String> processes = new ArrayList<String>();
+            List<String> processes = new ArrayList<>();
             for (Value value : killTaskList) {
                 processes.add(value.get().toString().trim());
             }
             TaskKiller.killProcesses(processes, false);
             TaskKiller.killProcesses(processes, true);
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             throw new BotCommandException("Error occurred while terminating applications: " + e.getMessage());
         }
     }

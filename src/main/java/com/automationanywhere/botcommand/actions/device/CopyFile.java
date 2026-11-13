@@ -1,13 +1,5 @@
 package com.automationanywhere.botcommand.actions.device;
 
-import java.nio.file.CopyOption;
-import java.nio.file.Files;
-import java.nio.file.LinkOption;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
-import java.nio.file.attribute.FileAttribute;
-
 import com.automationanywhere.botcommand.data.Value;
 import com.automationanywhere.botcommand.data.impl.DictionaryValue;
 import com.automationanywhere.botcommand.data.impl.BooleanValue;
@@ -22,6 +14,7 @@ import com.automationanywhere.commandsdk.model.DataType;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.HashMap;
+import java.util.Map;
 
 @BotCommand
 @CommandPkg(
@@ -87,73 +80,86 @@ public class CopyFile {
             Boolean overwriteExisting
     ) {
         try {
-            CopyOption[] copyOptionArray;
-            Path dst;
-            Path dstBase;
-            Path src;
-            boolean overwrite;
+            // Defaults defensivos
             boolean createDirs = createMissingFolders == null ? true : createMissingFolders;
-            boolean bl = overwrite = overwriteExisting != null && overwriteExisting != false;
+            boolean overwrite  = overwriteExisting != null && overwriteExisting;
+
+// Resolver rutas según modo
+            final Path src;
+            final Path dstBase;
+
             if (PATH_RELATIVE.equalsIgnoreCase(pathType)) {
                 if (baseFolderPath == null || baseFolderPath.isBlank()) {
                     throw new BotCommandException("Base folder path es obligatorio en modo RELATIVE.");
                 }
-                Path base = Paths.get(baseFolderPath, new String[0]).toAbsolutePath().normalize();
-                src = base.resolve(sourcePath).normalize();
+                Path base = Paths.get(baseFolderPath).toAbsolutePath().normalize();
+                src     = base.resolve(sourcePath).normalize();
                 dstBase = base.resolve(destinationPath).normalize();
             } else if (PATH_ABSOLUTE.equalsIgnoreCase(pathType)) {
-                src = Paths.get(sourcePath, new String[0]).toAbsolutePath().normalize();
-                dstBase = Paths.get(destinationPath, new String[0]).toAbsolutePath().normalize();
+                src     = Paths.get(sourcePath).toAbsolutePath().normalize();
+                dstBase = Paths.get(destinationPath).toAbsolutePath().normalize();
             } else {
                 throw new BotCommandException("Path mode inválido: " + pathType);
             }
-            if (!Files.exists(src, new LinkOption[0])) {
-                throw new BotCommandException("El archivo de origen no existe: " + String.valueOf(src));
+
+// Validaciones básicas
+            if (!Files.exists(src)) {
+                throw new BotCommandException("El archivo de origen no existe: " + src);
             }
-            if (Files.isDirectory(src, new LinkOption[0])) {
+            if (Files.isDirectory(src)) {
                 throw new BotCommandException("El origen es un directorio. Esta acción solo copia archivos.");
             }
-            boolean destIsFolderFlag = destinationIsFolder != null && destinationIsFolder != false;
-            boolean destExistsDir = Files.exists(dstBase, new LinkOption[0]) && Files.isDirectory(dstBase, new LinkOption[0]);
-            boolean treatAsFolder = destIsFolderFlag || destExistsDir;
-            Path path = dst = treatAsFolder ? dstBase.resolve(src.getFileName()).normalize() : dstBase.normalize();
+
+// --- NUEVO: inferir si el destino es carpeta ---
+            boolean destIsFolderParam = destinationIsFolder != null && destinationIsFolder;
+            boolean destExistsDir     = Files.exists(dstBase) && Files.isDirectory(dstBase);
+
+// Prioridad: parámetro > destino existente directorio
+            boolean destIsFolder = destIsFolderParam || destExistsDir;
+
+// Determinar destino final (reutiliza nombre si es carpeta)
+            Path dst = destIsFolder ? dstBase.resolve(src.getFileName()).normalize() : dstBase;
+
             if (src.equals(dst)) {
                 throw new BotCommandException("El destino es igual al origen. Operación no válida.");
             }
+
+// Crear carpetas destino (si corresponde)
             Path destParent = dst.getParent();
-            if (destParent != null && !Files.exists(destParent, new LinkOption[0])) {
+            if (destParent != null && !Files.exists(destParent)) {
                 if (createDirs) {
-                    Files.createDirectories(destParent, new FileAttribute[0]);
+                    Files.createDirectories(destParent);
                 } else {
-                    throw new BotCommandException("La carpeta destino no existe y 'Create missing folders' = false: " + String.valueOf(destParent));
+                    throw new BotCommandException("La carpeta destino no existe y 'Create missing folders' = false: " + destParent);
                 }
             }
-            boolean existedBefore = Files.exists(dst, new LinkOption[0]);
-            if (overwrite) {
-                CopyOption[] copyOptionArray2 = new CopyOption[2];
-                copyOptionArray2[0] = StandardCopyOption.REPLACE_EXISTING;
-                copyOptionArray = copyOptionArray2;
-                copyOptionArray2[1] = StandardCopyOption.COPY_ATTRIBUTES;
-            } else {
-                CopyOption[] copyOptionArray3 = new CopyOption[1];
-                copyOptionArray = copyOptionArray3;
-                copyOptionArray3[0] = StandardCopyOption.COPY_ATTRIBUTES;
-            }
-            CopyOption[] options = copyOptionArray;
+
+// ¿Destino ya existía?
+            boolean existedBefore = Files.exists(dst);
+
+// Copiar
+            CopyOption[] options = overwrite
+                    ? new CopyOption[]{StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES}
+                    : new CopyOption[]{StandardCopyOption.COPY_ATTRIBUTES};
+
             Files.copy(src, dst, options);
-            BasicFileAttributes srcAttr = Files.readAttributes(src, BasicFileAttributes.class, new LinkOption[0]);
-            long bytes = srcAttr.size();
+
+// Metadata útil
+            BasicFileAttributes srcAttr = Files.readAttributes(src, BasicFileAttributes.class);
+            long bytes   = srcAttr.size();
             boolean renamed = !src.getFileName().toString().equals(dst.getFileName().toString());
-            HashMap<String, Value> ret = new HashMap<String, Value>();
-            ret.put("SourcePath", new StringValue(src.toString()));
-            ret.put("DestinationPath", new StringValue(dst.toString()));
+
+// Armar retorno
+            Map<String, Value> ret = new HashMap<>();
+            ret.put("SourcePath",        new StringValue(src.toString()));
+            ret.put("DestinationPath",   new StringValue(dst.toString()));
             ret.put("DestinationParent", new StringValue(destParent == null ? "" : destParent.toString()));
-            ret.put("Renamed", new BooleanValue(renamed));
-            ret.put("Overwritten", new BooleanValue(existedBefore && overwrite));
-            ret.put("BytesCopied", new NumberValue(bytes));
+            ret.put("Renamed",           new BooleanValue(renamed));
+            ret.put("Overwritten",       new BooleanValue(existedBefore && overwrite));
+            ret.put("BytesCopied",       new NumberValue((double) bytes));
             return new DictionaryValue(ret);
-        }
-        catch (Exception e) {
+
+        } catch (Exception e) {
             throw new BotCommandException("CopyFile falló: " + e.getMessage(), e);
         }
     }

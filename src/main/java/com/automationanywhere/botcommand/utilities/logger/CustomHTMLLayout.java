@@ -1,8 +1,6 @@
 package com.automationanywhere.botcommand.utilities.logger;
 
-import org.apache.commons.io.IOUtils;
-import com.automationanywhere.botcommand.utilities.logger.HTMLGenerator;
-
+import com.automationanywhere.botcommand.data.Value;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.text.StringEscapeUtils;
 import org.apache.logging.log4j.core.Layout;
@@ -56,30 +54,79 @@ public class CustomHTMLLayout extends AbstractStringLayout {
 
     @Override
     public String toSerializable(LogEvent event) {
+        String formattedContent;
         String message;
         String sourceBotPath = "";
-        Object variablesLink = "";
+        String variablesLink = "";
         String screenshotLink = "";
+
+        // Parse the message and extract column details for current row
         Object[] parameters = event.getMessage().getParameters();
-        if (parameters != null && parameters.length > 0 && parameters[0] instanceof Map) {
-            Map messageObject = (Map)parameters[0];
-            message = Optional.ofNullable(messageObject.get("Message")).map(Object::toString).orElse("");
-            sourceBotPath = Optional.ofNullable(messageObject.get("Source")).map(Object::toString).orElse("");
-            String screenshotPath = Optional.ofNullable(messageObject.get("Screenshot")).map(Object::toString).orElse("");
-            if (messageObject.get("Variables") != null && messageObject.get("Variables") instanceof Map) {
-                String logEventId;
-                String variablesFolderPath;
-                String variablesFilePath;
-                Map variableMap = (Map)messageObject.get("Variables");
+        if (parameters != null && parameters.length > 0 && parameters[ 0 ] instanceof Map) {
+            Map<String, Object> messageObject = (Map<String, Object>) parameters[ 0 ];
+            message = Optional.ofNullable(messageObject.get(Columns.MESSAGE)).map(Object::toString).orElse("");
+            sourceBotPath = Optional.ofNullable(messageObject.get(Columns.SOURCE)).map(Object::toString).orElse("");
+            String screenshotPath =
+                    Optional.ofNullable(messageObject.get(Columns.SCREENSHOT)).map(Object::toString).orElse("");
+
+            // Process variables if present
+            if (messageObject.get(Columns.VARIABLES) != null && messageObject.get(Columns.VARIABLES) instanceof Map) {
+                Map<String, Value> variableMap = (Map<String, Value>) messageObject.get(Columns.VARIABLES);
+
+                // Generate count display for the main log
                 String variablesCount = HTMLGenerator.generateHTML(variableMap);
-                variablesLink = messageObject.get("variablesFolderPath") != null ? (!(variablesFilePath = HTMLGenerator.generateVariableFile(variableMap, variablesFolderPath = messageObject.get("variablesFolderPath").toString(), logEventId = UUID.randomUUID().toString())).isEmpty() ? "<a href='" + variablesFilePath + "' target='_blank' class='vars-link'>" + variablesCount + "</a>" : variablesCount) : variablesCount;
+
+                // If the variables folder path is provided, generate a separate file
+                if (messageObject.get("variablesFolderPath") != null) {
+                    String variablesFolderPath = messageObject.get("variablesFolderPath").toString();
+                    String logEventId = UUID.randomUUID().toString();
+
+                    // Generate variable file and get the link
+                    String variablesFilePath = HTMLGenerator.generateVariableFile(variableMap, variablesFolderPath,
+                            logEventId);
+
+                    if (!variablesFilePath.isEmpty()) {
+                        variablesLink =
+                                "<a href='" + variablesFilePath + "' target='_blank' class='vars-link'>" + variablesCount + "</a>";
+                    } else {
+                        variablesLink = variablesCount;
+                    }
+                } else {
+                    variablesLink = variablesCount;
+                }
             }
+
+            // Get screenshot link if screenshot exists
             screenshotLink = HTMLGenerator.getScreenshotHTML(screenshotPath);
         } else {
             message = event.getMessage().getFormattedMessage();
         }
+
+        // Get the level as a CSS class for styling
         String levelClass = "level-" + event.getLevel().toString();
-        String formattedContent = String.format("<tr><td>%s</td><td class='%s'>%s</td><td>%s</td><td class='responsive-hide'>%s</td><td class='responsive-hide'>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>", StringEscapeUtils.escapeHtml4(this.dateFormat.format(event.getTimeMillis())), levelClass, StringEscapeUtils.escapeHtml4(event.getLevel().toString()), StringEscapeUtils.escapeHtml4(sourceBotPath), StringEscapeUtils.escapeHtml4(machine), StringEscapeUtils.escapeHtml4(user), StringEscapeUtils.escapeHtml4(message), variablesLink, screenshotLink);
+
+        formattedContent = String.format(
+                "<tr>" +
+                        "<td>%s</td>" +
+                        "<td class='%s'>%s</td>" +
+                        "<td>%s</td>" +
+                        "<td class='responsive-hide'>%s</td>" +
+                        "<td class='responsive-hide'>%s</td>" +
+                        "<td>%s</td>" +
+                        "<td>%s</td>" +
+                        "<td>%s</td>" +
+                        "</tr>",
+                StringEscapeUtils.escapeHtml4(dateFormat.format(event.getTimeMillis())),
+                levelClass,
+                StringEscapeUtils.escapeHtml4(event.getLevel().toString()),
+                StringEscapeUtils.escapeHtml4(sourceBotPath),
+                StringEscapeUtils.escapeHtml4(machine),
+                StringEscapeUtils.escapeHtml4(user),
+                StringEscapeUtils.escapeHtml4(message),
+                variablesLink,
+                screenshotLink
+        );
+
         return formattedContent;
     }
 
@@ -108,7 +155,7 @@ public class CustomHTMLLayout extends AbstractStringLayout {
 
         @Override
         public CustomHTMLLayout build() {
-            return new CustomHTMLLayout(this.charset);
+            return new CustomHTMLLayout(charset);
         }
     }
 

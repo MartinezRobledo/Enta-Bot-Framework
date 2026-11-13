@@ -1,16 +1,5 @@
 package com.automationanywhere.botcommand.actions.device;
 
-import java.nio.file.CopyOption;
-import java.nio.file.DirectoryStream;
-import java.nio.file.Files;
-import java.nio.file.LinkOption;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
-import java.nio.file.attribute.FileAttribute;
-import java.util.ArrayList;
-import java.util.HashMap;
-
 import com.automationanywhere.botcommand.data.Value;
 import com.automationanywhere.botcommand.data.impl.DictionaryValue;
 import com.automationanywhere.botcommand.data.impl.BooleanValue;
@@ -75,78 +64,83 @@ public class CopyFolder {
             Boolean overwriteExisting
     ) {
         try {
-            Path dstFolder;
-            Path srcFolder;
-            boolean overwrite;
-            boolean createDirs = createMissingFolders == null || createMissingFolders != false;
-            boolean bl = overwrite = overwriteExisting != null && overwriteExisting != false;
+            boolean createDirs = createMissingFolders == null || createMissingFolders;
+            boolean overwrite = overwriteExisting != null && overwriteExisting;
+
+            final Path srcFolder;
+            final Path dstFolder;
+
             if (PATH_RELATIVE.equalsIgnoreCase(pathType)) {
                 if (baseFolderPath == null || baseFolderPath.isBlank()) {
                     throw new BotCommandException("Base folder path es obligatorio en modo RELATIVE.");
                 }
-                Path base = Paths.get(baseFolderPath, new String[0]).toAbsolutePath().normalize();
+                Path base = Paths.get(baseFolderPath).toAbsolutePath().normalize();
                 srcFolder = base.resolve(sourceFolder).normalize();
                 dstFolder = base.resolve(destinationFolder).normalize();
             } else if (PATH_ABSOLUTE.equalsIgnoreCase(pathType)) {
-                srcFolder = Paths.get(sourceFolder, new String[0]).toAbsolutePath().normalize();
-                dstFolder = Paths.get(destinationFolder, new String[0]).toAbsolutePath().normalize();
+                srcFolder = Paths.get(sourceFolder).toAbsolutePath().normalize();
+                dstFolder = Paths.get(destinationFolder).toAbsolutePath().normalize();
             } else {
                 throw new BotCommandException("Path mode inválido: " + pathType);
             }
-            if (!Files.exists(srcFolder, new LinkOption[0]) || !Files.isDirectory(srcFolder, new LinkOption[0])) {
-                throw new BotCommandException("La carpeta origen no existe o no es válida: " + String.valueOf(srcFolder));
+
+            if (!Files.exists(srcFolder) || !Files.isDirectory(srcFolder)) {
+                throw new BotCommandException("La carpeta origen no existe o no es válida: " + srcFolder);
             }
-            if (!Files.exists(dstFolder, new LinkOption[0])) {
+
+            if (!Files.exists(dstFolder)) {
                 if (createDirs) {
-                    Files.createDirectories(dstFolder, new FileAttribute[0]);
+                    Files.createDirectories(dstFolder);
                 } else {
-                    throw new BotCommandException("La carpeta destino no existe y 'Create missing folders' = false: " + String.valueOf(dstFolder));
+                    throw new BotCommandException("La carpeta destino no existe y 'Create missing folders' = false: " + dstFolder);
                 }
             }
-            ArrayList<DictionaryValue> copiedFiles = new ArrayList<DictionaryValue>();
-            double totalBytes = 0.0;
-            try (DirectoryStream<Path> stream = Files.newDirectoryStream(srcFolder);){
+
+            List<Value> copiedFiles = new ArrayList<>();
+            double totalBytes = 0;
+
+            try (DirectoryStream<Path> stream = Files.newDirectoryStream(srcFolder)) {
                 for (Path file : stream) {
-                    CopyOption[] copyOptionArray;
-                    Path destFile;
-                    if (!Files.isRegularFile(file, new LinkOption[0]) || file.equals(destFile = dstFolder.resolve(file.getFileName()).normalize())) continue;
-                    boolean bl2 = Files.exists(destFile, new LinkOption[0]);
-                    if (overwrite) {
-                        CopyOption[] copyOptionArray2 = new CopyOption[2];
-                        copyOptionArray2[0] = StandardCopyOption.REPLACE_EXISTING;
-                        copyOptionArray = copyOptionArray2;
-                        copyOptionArray2[1] = StandardCopyOption.COPY_ATTRIBUTES;
-                    } else {
-                        CopyOption[] copyOptionArray3 = new CopyOption[1];
-                        copyOptionArray = copyOptionArray3;
-                        copyOptionArray3[0] = StandardCopyOption.COPY_ATTRIBUTES;
+                    if (Files.isRegularFile(file)) {
+                        Path destFile = dstFolder.resolve(file.getFileName()).normalize();
+                        if (file.equals(destFile)) continue;
+
+                        boolean existedBefore = Files.exists(destFile);
+                        CopyOption[] options = overwrite
+                                ? new CopyOption[]{StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES}
+                                : new CopyOption[]{StandardCopyOption.COPY_ATTRIBUTES};
+
+                        Files.copy(file, destFile, options);
+
+                        BasicFileAttributes attr = Files.readAttributes(file, BasicFileAttributes.class);
+                        double bytesCopied = attr.size();
+                        totalBytes += bytesCopied;
+
+                        Map<String, Value> fileInfo = new HashMap<>();
+                        fileInfo.put("SourcePath", new StringValue(file.toString()));
+                        fileInfo.put("DestinationPath", new StringValue(destFile.toString()));
+                        fileInfo.put("Overwritten", new BooleanValue(existedBefore && overwrite));
+                        fileInfo.put("BytesCopied", new NumberValue(bytesCopied));
+
+                        copiedFiles.add(new DictionaryValue(fileInfo));
                     }
-                    CopyOption[] options = copyOptionArray;
-                    Files.copy(file, destFile, options);
-                    BasicFileAttributes attr = Files.readAttributes(file, BasicFileAttributes.class, new LinkOption[0]);
-                    double bytesCopied = attr.size();
-                    totalBytes += bytesCopied;
-                    HashMap<String, Value> fileInfo = new HashMap<String, Value>();
-                    fileInfo.put("SourcePath", new StringValue(file.toString()));
-                    fileInfo.put("DestinationPath", new StringValue(destFile.toString()));
-                    fileInfo.put("Overwritten", new BooleanValue(bl2 && overwrite));
-                    fileInfo.put("BytesCopied", new NumberValue(bytesCopied));
-                    copiedFiles.add(new DictionaryValue(fileInfo));
                 }
             }
-            HashMap<String, Value> result = new HashMap<String, Value>();
+
+            Map<String, Value> result = new HashMap<>();
             result.put("SourceFolder", new StringValue(srcFolder.toString()));
             result.put("DestinationFolder", new StringValue(dstFolder.toString()));
-            HashMap<String, Value> filesMap = new HashMap<String, Value>();
+            Map<String, Value> filesMap = new HashMap<>();
             int i = 1;
-            for (Value value : copiedFiles) {
-                filesMap.put("File" + i++, value);
+            for (Value fileInfo : copiedFiles) {
+                filesMap.put("File" + i++, fileInfo);
             }
             result.put("FilesCopied", new DictionaryValue(filesMap));
             result.put("TotalBytesCopied", new NumberValue(totalBytes));
+
             return new DictionaryValue(result);
-        }
-        catch (Exception e) {
+
+        } catch (Exception e) {
             throw new BotCommandException("CopyFolder falló: " + e.getMessage(), e);
         }
     }

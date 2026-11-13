@@ -1,8 +1,5 @@
 package com.automationanywhere.botcommand.utilities.file;
 
-import org.apache.commons.io.FilenameUtils;
-import java.nio.file.LinkOption;
-
 
 import org.apache.commons.io.FilenameUtils;
 
@@ -19,38 +16,52 @@ public class FileValidator {
         if (filePath == null || filePath.isEmpty()) {
             throw new IllegalArgumentException("Path cannot be null or empty");
         }
-        this.path = Paths.get(filePath, new String[0]);
+        this.path = Paths.get(filePath);
     }
 
     public void validateFile(String[] allowedExtensions) {
-        this.validateCommonConditions();
-        if (Files.isDirectory(this.path, new LinkOption[0])) {
-            throw new IllegalArgumentException("Specified path is a directory, not a file: " + String.valueOf(this.path));
+        validateCommonConditions();
+
+        if (Files.isDirectory(path)) {
+            throw new IllegalArgumentException("Specified path is a directory, not a file: " + path);
         }
-        if (!Files.isRegularFile(this.path, new LinkOption[0])) {
-            throw new IllegalArgumentException("Specified path does not point to a valid file: " + String.valueOf(this.path));
+
+        if (!Files.isRegularFile(path)) {
+            throw new IllegalArgumentException("Specified path does not point to a valid file: " + path);
         }
-        String fileExtension = FilenameUtils.getExtension(this.path.getFileName().toString());
+
+        String fileExtension = FilenameUtils.getExtension(path.getFileName().toString());
         String lowerCaseFileExtension = fileExtension.toLowerCase();
-        boolean isExtensionValid = Arrays.stream(allowedExtensions).map(String::toLowerCase).anyMatch(lowerCaseFileExtension::equals);
+
+        boolean isExtensionValid = Arrays.stream(allowedExtensions)
+                .map(String::toLowerCase)
+                .anyMatch(lowerCaseFileExtension::equals);
+
         if (!isExtensionValid) {
-            throw new IllegalArgumentException("Invalid file extension. Expected: " + Arrays.toString(allowedExtensions) + ", Actual: " + lowerCaseFileExtension);
+            throw new IllegalArgumentException("Invalid file extension. Expected: " +
+                    Arrays.toString(allowedExtensions) + ", Actual: " + lowerCaseFileExtension);
         }
     }
 
     private void validateCommonConditions() {
-        if (!Files.exists(this.path, new LinkOption[0])) {
-            throw new IllegalArgumentException("File does not exist at the specified path: " + String.valueOf(this.path));
+        if (!Files.exists(path)) {
+            throw new IllegalArgumentException("File does not exist at the specified path: " + path);
         }
-        if (!Files.isReadable(this.path)) {
-            throw new IllegalArgumentException("Cannot read the specified file: " + String.valueOf(this.path));
+
+        if (!Files.isReadable(path)) {
+            throw new IllegalArgumentException("Cannot read the specified file: " + path);
         }
     }
 
     public void validateDirectory() {
-        this.validateCommonConditions();
-        if (!Files.isDirectory(this.path, new LinkOption[0])) {
-            throw new IllegalArgumentException("Specified path is not a directory: " + String.valueOf(this.path));
+        validateCommonConditions();
+
+        // Additional directory-specific validations
+        if (!Files.isDirectory(path)) {
+            throw new IllegalArgumentException("Specified path is not a directory: " + path);
         }
+
     }
 }
+
+

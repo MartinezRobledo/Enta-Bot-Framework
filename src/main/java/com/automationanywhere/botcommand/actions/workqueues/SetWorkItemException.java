@@ -1,15 +1,15 @@
 package com.automationanywhere.botcommand.actions.workqueues;
 
-import java.sql.Connection;
-
 import com.automationanywhere.botcommand.exception.BotCommandException;
 import com.automationanywhere.botcommand.utilities.workqueue.AccessExecutor;
 import com.automationanywhere.botcommand.utilities.workqueue.WorkqueueItemDao;
+import com.automationanywhere.botcommand.utilities.workqueue.WorkqueueSession;
 import com.automationanywhere.commandsdk.annotations.*;
 import com.automationanywhere.commandsdk.annotations.rules.NotEmpty;
 import com.automationanywhere.commandsdk.annotations.rules.SelectModes;
 import com.automationanywhere.commandsdk.model.AttributeType;
 import com.automationanywhere.commandsdk.model.DataType;
+import com.automationanywhere.commandsdk.annotations.rules.SessionObject;
 
 @BotCommand
 @CommandPkg(
@@ -53,23 +53,19 @@ public class SetWorkItemException {
     ) {
         try {
             AccessExecutor.executeVoidWithConnection(filePath, conn -> {
-                WorkqueueItemDao dao = new WorkqueueItemDao((Connection)conn);
+                WorkqueueItemDao dao = new WorkqueueItemDao(conn);
                 if ("id".equalsIgnoreCase(identifyBy)) {
-                    if (itemId == null) {
-                        throw new BotCommandException("Debe indicar el Item Id.");
-                    }
+                    if (itemId == null) throw new BotCommandException("Debe indicar el Item Id.");
                     dao.exceptionFromWorkingById(itemId.longValue(), reason);
                 } else if ("key".equalsIgnoreCase(identifyBy)) {
-                    if (itemKey == null || itemKey.isBlank()) {
+                    if (itemKey == null || itemKey.isBlank())
                         throw new BotCommandException("Debe indicar el Item Key.");
-                    }
                     dao.exceptionFromWorkingByKey(itemKey, reason);
                 } else {
                     throw new BotCommandException("Valor inválido en 'Identificar ítem por': " + identifyBy);
                 }
             });
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             throw new BotCommandException("Set Work Item Exception: " + e.getMessage());
         }
     }

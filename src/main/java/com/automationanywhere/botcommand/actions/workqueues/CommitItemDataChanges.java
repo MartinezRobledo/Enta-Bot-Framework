@@ -1,9 +1,6 @@
 // src/main/java/com/automationanywhere/botcommand/actions/workqueues/CommitItemDataChanges.java
 package com.automationanywhere.botcommand.actions.workqueues;
 
-import com.automationanywhere.botcommand.utilities.workqueue.Helpers;
-import java.sql.Connection;
-
 import com.automationanywhere.botcommand.data.impl.DictionaryValue;
 import com.automationanywhere.botcommand.exception.BotCommandException;
 import com.automationanywhere.botcommand.utilities.workqueue.AccessExecutor;
@@ -55,44 +52,41 @@ public class CommitItemDataChanges {
         try {
             ItemDataTxnBuffer.ScopeKey scope;
             boolean byId;
-            long id = 0L;
-            String key = null;
+            long id = 0; String key = null;
+
             if ("id".equalsIgnoreCase(identifyBy)) {
-                if (itemId == null) {
-                    throw new BotCommandException("Debe indicar el Item Id.");
-                }
-                byId = true;
-                id = itemId.longValue();
+                if (itemId == null) throw new BotCommandException("Debe indicar el Item Id.");
+                byId = true; id = itemId.longValue();
                 scope = ItemDataTxnBuffer.scopeById(filePath, id);
             } else if ("key".equalsIgnoreCase(identifyBy)) {
-                if (itemKey == null || itemKey.isBlank()) {
-                    throw new BotCommandException("Debe indicar el Item Key.");
-                }
-                byId = false;
-                key = itemKey;
+                if (itemKey == null || itemKey.isBlank()) throw new BotCommandException("Debe indicar el Item Key.");
+                byId = false; key = itemKey;
                 scope = ItemDataTxnBuffer.scopeByKey(filePath, key);
             } else {
                 throw new BotCommandException("Valor inválido en 'Identificar ítem por': " + identifyBy);
             }
-            Map<String, String> staged = ItemDataTxnBuffer.drain(scope);
+
+            Map<String,String> staged = ItemDataTxnBuffer.drain(scope); // toma y limpia staging
+
             boolean finalById = byId;
-            long finalId = id;
-            String finalKey = key;
+            long finalId = id; String finalKey = key;
+
             return AccessExecutor.executeWithConnection(filePath, conn -> {
+                WorkqueueItemDao dao = new WorkqueueItemDao(conn);
                 WorkqueueItemDao.WorkItem item;
-                WorkqueueItemDao dao = new WorkqueueItemDao((Connection)conn);
                 if (staged.isEmpty()) {
+                    // Nada staged: retornar estado actual
                     item = finalById ? dao.readWorkItemById(finalId) : dao.readWorkItemByKey(finalKey);
                 } else {
-                    WorkqueueItemDao.WorkItem workItem = item = finalById ? dao.upsertDataFieldsById(finalId, staged) : dao.upsertDataFieldsByKey(finalKey, staged);
+                    // Commit en bloque (plural)
+                    item = finalById ? dao.upsertDataFieldsById(finalId, staged)
+                            : dao.upsertDataFieldsByKey(finalKey, staged);
                 }
-                if (item == null) {
-                    throw new BotCommandException("El ítem no existe.");
-                }
-                return Helpers.toDictionary(item);
+                if (item == null) throw new BotCommandException("El ítem no existe.");
+                return toDictionary(item);
             });
-        }
-        catch (Exception e) {
+
+        } catch (Exception e) {
             throw new BotCommandException("CommitItemDataChanges falló: " + e.getMessage(), e);
         }
     }

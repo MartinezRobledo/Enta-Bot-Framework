@@ -1,68 +1,64 @@
-BOT FRAMEWORK: RECONSTRUCCIÓN SOBRE EL FLUJO DE MAIN
+BOT FRAMEWORK: MAIN ORIGINAL + DIFERENCIAS RECUPERADAS
 
-La rama develop conserva la lógica del paquete publicado
-A360EntaBotFramework-1.0.2-20260925-171647.jar y usa la estructura de origin/main
-fd8a8e4: anotaciones del SDK, procesamiento de anotaciones, commandCodeGen y Shadow.
-El inventario conserva el hash del paquete usado como referencia.
+BASE Y RESPALDO
+Se apartó la reconstrucción develop 36ce702 en la carpeta hermana
+Enta-Bot-Framework-reconstruido-36ce702, junto con su paquete 1.0.4.
+Después se restauró el contenido de develop desde origin/main fd8a8e4 y se
+comprobó que coincidiera exactamente antes de aplicar las diferencias.
 
-VERSION DE PRUEBA: 1.0.4
-Esta versión reemplaza la reconstrucción provisional 1.0.3.
+De los 42 archivos Java originales de main, 35 permanecen idénticos byte por
+byte, incluidos comentarios, espacios, saltos de línea e imports.
+Se agregaron las cuatro acciones que no existían en main:
+- FileToBase64
+- AddItemAdvanced
+- GetLastItem
+- UpsertItemDataField
+
+CAMBIOS PUNTUALES EN ARCHIVOS EXISTENTES
+- StringToNumberSmart: firma con amount únicamente y NumberValue sin redondeo
+  configurable. El parser original de main permanece sin modificaciones.
+- CopyFile: criterio de carpeta por flag o directorio existente y estructura
+  de parámetros del paquete recuperado. Se conserva el resto de main.
+- RemoveDuplicatesFromList: retorno LIST, etiqueta e icono del paquete recuperado;
+  la implementación original permanece sin modificaciones.
+- CommitItemDataChanges: llama a upsertDataFieldsById/Key para aplicar staging.
+- DeferWorkItem: recibe ZonedDateTime y lo convierte a Timestamp. Se conserva
+  el helper anterior de main aunque ya no se utiliza.
+- ItemDataTxnBuffer: agrega addUpsert, manteniendo los métodos originales.
+- WorkqueueItemDao: agrega getLastItem y los dos upsert; aplica las diferencias
+  recuperadas de diferimiento. Los demás métodos originales no se reemplazaron.
+Los métodos nuevos usan las constantes SQL y el estilo de los métodos de main.
 
 BUILD
-Requiere JDK 11, JAVA_HOME y el wrapper de Gradle 7.6.2:
+Versión de prueba: 1.0.5. Con JDK 11 y JAVA_HOME:
   ./gradlew clean build
 En Windows:
   gradlew.bat clean build
 
-Paquete final para Control Room:
-  build/libs/A360EntaBotFramework-1.0.4.jar
-El archivo con sufijo -thin es el JAR Java sin dependencias; no es el paquete
-para importar. packageVersion/codeVersion reciben el timestamp generado por
-el SDK, igual que en main.
+Paquete para importar:
+  build/libs/A360EntaBotFramework-1.0.5.jar
+El JAR -thin no es el paquete final. El SDK genera automáticamente adaptadores
+Command y package.json bajo build/. Se mantienen las dependencias Maven,
+commandCodeGen y Shadow de main. Las tareas agregadas verifican el contrato,
+ejecutan TestNG y las comprobaciones de recuperación.
 
-FUENTES Y GENERACIÓN
-src/main/java contiene 46 fuentes propias. Las clases de acción usan
-@BotCommand, @CommandPkg, @Execute y las anotaciones de sus parámetros.
-La condición usa @ConditionTest. Se recuperaron también las anotaciones de
-campos inyectados, documentación y contexto global de sesión.
+PRUEBAS
+Se conservan los tests originales de main. El único cambio en un test existente
+es la detección de soporte para modificar creationTime antes de los dos casos
+que lo necesitan; se omiten cuando el sistema no lo permite.
+Se agregan las comprobaciones recuperadas y pruebas de comandos generados.
+WorkqueueDeltaTest comprueba getLastItem, upsert mixto (actualizar e insertar)
+y commit de staging con una base Access temporal. Ese fixture configura
+Jackcess con dateTimeType=LOCAL_DATE_TIME para las fechas de Java 11.
+El build final se registra en validacion-develop.json.
 
-Los adaptadores *Command y *Condition se generan únicamente dentro de
-build/generated/sources/annotationProcessor/java/main. No se versionan.
-package.json se genera dentro de build/resources/main desde package.template
-y las anotaciones. No hay un package.json manual en src/main/resources.
+INCIDENCIAS PREEXISTENTES IDENTIFICADAS AL COMPARAR
+Se conservaron para no agregar cambios funcionales ajenos al trasplante:
+1. deferFromWorkingByKey tiene seis parámetros SQL y asigna cinco valores.
+2. Los upsert ejecutan ambos batches aunque uno esté vacío; UCanAccess 5.0.1
+   falla con "statement is not in batch mode" cuando no hay campos nuevos
+   que insertar. Se observó al probar una actualización sin inserciones.
+Las pruebas positivas de upsert cubren una combinación de campos existentes
+más campos nuevos. No acreditan el caso que presenta la incidencia anterior.
 
-Se usan las dependencias Maven y los SDK declarados en main. No se compila
-contra el JAR perdido ni contra un paquete agregado de dependencias extraídas.
-Shadow reubica commons-io y conserva la configuración JDBC del proyecto.
-
-RECUPERACIÓN
-Las cuatro acciones ausentes de main son FileToBase64, AddItemAdvanced,
-GetLastItem y UpsertItemDataField. Sus anotaciones se reconstruyeron a partir
-del contrato del paquete publicado. Para las existentes se restauraron las
-anotaciones originales de main, ajustándolas al contrato del JAR.
-
-Se mantienen las diferencias reales del build perdido, entre ellas:
-- StringToNumberSmart recibe amount, sin decimalPlaces.
-- DeferWorkItem recibe ZonedDateTime en deferUntil.
-- WorkqueueItemDao incluye getLastItem y las operaciones upsert.
-- ItemDataTxnBuffer incluye addUpsert.
-El texto de CopyFile se corrigió para no mencionar el parámetro inexistente
-useSourceName. Sus nombres, tipos, validaciones y valores por defecto no cambian.
-
-Se conservó código original de main donde su bytecode coincide con el publicado;
-las demás implementaciones se reconstruyeron del JAR. No se recuperan todos los
-comentarios ni se afirma que el texto sea idéntico al código fuente perdido.
-
-VALIDACIÓN
-- Los tests de main vuelven a src/test y se ejecutan con TestNG.
-- Dos pruebas de fecha de creación comprueban primero que el sistema de archivos
-  permite modificar creationTime; en caso contrario quedan omitidas. Deben
-  ejecutarse en un sistema compatible para verificar ese comportamiento.
-- RecoveredCommandsTest ejercita adaptadores generados desde las anotaciones.
-- smokeTest ejecuta 20 comprobaciones sobre el JAR final.
-- verifyPackage compara los 32 comandos y la condición con package-original.json,
-  y verifica las clases y recursos recuperados. Solo admite la corrección de texto
-  documentada para CopyFile.
-
-Los resultados del build actual se registran en validacion-develop.json.
-La prueba completa en Control Room/Bot Agent, Access real y Windows sigue pendiente.
+Queda pendiente la validación completa en Control Room/Bot Agent y Windows.

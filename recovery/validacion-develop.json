@@ -1,21 +1,26 @@
 {
   "branch": "develop",
-  "baseCommit": "fd8a8e444ee58e548770ab3cd3b6cbe52d92ffd8",
-  "version": "1.0.4-20261113-125224",
-  "artifact": "A360EntaBotFramework-1.0.4.jar",
-  "sha256": "6fd5cfca0298c3bc2a6f15e1da61dbb229d71943db6fea1b29964620d8d34fd0",
-  "build": "PASS",
+  "mainBase": "fd8a8e444ee58e548770ab3cd3b6cbe52d92ffd8",
+  "snapshot": "../Enta-Bot-Framework-reconstruido-36ce702",
+  "version": "1.0.5-20261113-131211",
+  "artifact": "A360EntaBotFramework-1.0.5.jar",
+  "sha256": "6bc752311f3b7372a79042533bc1ab57d25c4da06cc473e630c17ff7e4c9df0d",
   "tests": {
-    "passed": 41,
+    "passed": 44,
     "failed": 0,
     "skipped": 2
   },
   "smokeChecks": 20,
   "commands": 32,
   "conditions": 1,
-  "ownClasses": 89,
-  "sdkGenerationRestored": true,
   "publicProtectedApiMatchesPublishedJar": true,
-  "dependencyEntryBytesMatchPublishedJar": true,
+  "existingMainJavaFilesByteIdentical": 35,
+  "existingMainJavaFilesWithTargetedChanges": 7,
+  "addedActions": 4,
+  "accessTestFixtureDateTimeType": "LOCAL_DATE_TIME",
+  "knownPreservedIssues": [
+    "deferFromWorkingByKey: 6 SQL parameters, 5 assigned values",
+    "upsert: executeBatch called even when update or insert batch is empty"
+  ],
   "controlRoomTested": false
 }

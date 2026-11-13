@@ -36,12 +36,13 @@ public class KeyNotExistsCondition {
             @NotEmpty
             String key
     ) {
-        if (key == null) {
-            return true;
-        }
-        if (dictionary == null || dictionary.isEmpty()) {
-            return true;
-        }
+        // Null o vacío => tratamos como “no existe”
+        if (key == null) return true;
+        if (dictionary == null || dictionary.isEmpty()) return true;
+
+        // Por defecto A360 trata las claves de diccionario como sensibles a mayúsculas/minúsculas,
+        // así que usamos containsKey tal cual (case-sensitive).
+        // (Si quisieras ignorar mayúsculas, iterá keys y compará equalsIgnoreCase)
         return !dictionary.containsKey(key);
     }
 }

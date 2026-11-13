@@ -1,15 +1,15 @@
 package com.automationanywhere.botcommand.actions.workqueues;
 
-import java.sql.Connection;
-
 import com.automationanywhere.botcommand.data.Value;
 import com.automationanywhere.botcommand.data.impl.DictionaryValue;
 import com.automationanywhere.botcommand.data.impl.StringValue;
 import com.automationanywhere.botcommand.exception.BotCommandException;
 import com.automationanywhere.botcommand.utilities.workqueue.AccessExecutor;
 import com.automationanywhere.botcommand.utilities.workqueue.WorkqueueItemDao;
+import com.automationanywhere.botcommand.utilities.workqueue.WorkqueueSession;
 import com.automationanywhere.commandsdk.annotations.*;
 import com.automationanywhere.commandsdk.annotations.rules.NotEmpty;
+import com.automationanywhere.commandsdk.annotations.rules.SessionObject;
 import com.automationanywhere.commandsdk.model.AttributeType;
 import com.automationanywhere.commandsdk.model.DataType;
 
@@ -57,29 +57,30 @@ public class GetItemData {
     ) {
         try {
             return AccessExecutor.executeWithConnection(filePath, conn -> {
+                WorkqueueItemDao dao = new WorkqueueItemDao(conn);
                 Map<String, String> rawDict;
-                WorkqueueItemDao dao = new WorkqueueItemDao((Connection)conn);
+
                 if ("id".equalsIgnoreCase(identifyBy)) {
-                    if (itemId == null) {
-                        throw new BotCommandException("Debe indicar el Item Id.");
-                    }
+                    if (itemId == null) throw new BotCommandException("Debe indicar el Item Id.");
                     rawDict = dao.getItemDataById(itemId.longValue());
                 } else if ("key".equalsIgnoreCase(identifyBy)) {
-                    if (itemKey == null || itemKey.isBlank()) {
+                    if (itemKey == null || itemKey.isBlank())
                         throw new BotCommandException("Debe indicar el Item Key.");
-                    }
                     rawDict = dao.getItemDataByKey(itemKey);
                 } else {
                     throw new BotCommandException("Valor inválido en 'Identificar ítem por': " + identifyBy);
                 }
-                LinkedHashMap<String, Value> dict = new LinkedHashMap<String, Value>();
+
+                // convertir Map<String,String> → Map<String,Value>
+                Map<String, Value> dict = new LinkedHashMap<>();
                 for (Map.Entry<String, String> entry : rawDict.entrySet()) {
                     dict.put(entry.getKey(), new StringValue(entry.getValue()));
                 }
+
                 return new DictionaryValue(dict);
             });
-        }
-        catch (Exception e) {
+
+        } catch (Exception e) {
             throw new BotCommandException("Error al obtener Item Data para '" + itemKey + "': " + e.getMessage());
         }
     }

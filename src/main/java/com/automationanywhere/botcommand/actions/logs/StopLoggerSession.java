@@ -30,8 +30,9 @@ public class StopLoggerSession {
             CustomLogger session) {
         if (session.isClosed()) {
             throw new BotCommandException("Logger session not found");
+        } else {
+            session.close();
         }
-        session.close();
     }
 
 

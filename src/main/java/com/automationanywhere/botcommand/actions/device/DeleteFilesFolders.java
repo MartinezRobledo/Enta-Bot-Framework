@@ -1,17 +1,5 @@
 package com.automationanywhere.botcommand.actions.device;
 
-import org.apache.commons.io.FileUtils;
-import java.nio.file.FileVisitResult;
-import java.nio.file.Files;
-import java.nio.file.LinkOption;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.SimpleFileVisitor;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
 import com.automationanywhere.botcommand.exception.BotCommandException;
 import com.automationanywhere.commandsdk.annotations.*;
 import com.automationanywhere.commandsdk.annotations.rules.*;
@@ -142,29 +130,49 @@ public class DeleteFilesFolders {
             String unableToDeleteBehavior
     ) {
         try {
-            Path basePath = Paths.get(inputFolderPath, new String[0]);
-            if (!Files.exists(basePath, new LinkOption[0])) {
+            Path basePath = Paths.get(inputFolderPath);
+            if (!Files.exists(basePath)) {
                 throw new BotCommandException("Base folder path does not exist: " + inputFolderPath);
             }
-            LOGGER.info("Starting deletion process for base path: " + String.valueOf(basePath));
-            FileCollector collector = new FileCollector(basePath, recursive, thresholdCriteria, this.calculateAgeThreshold(thresholdNumber.longValue(), thresholdUnit), skipFiles, skipFilePathPattern, skipFolders, skipFolderPathPattern);
+
+            LOGGER.info("Starting deletion process for base path: " + basePath);
+
+            // Phase 1: Collect data - files/directories to delete and skip
+            FileCollector collector = new FileCollector(
+                    basePath, recursive, thresholdCriteria,
+                    calculateAgeThreshold(thresholdNumber.longValue(), thresholdUnit),
+                    skipFiles, skipFilePathPattern,
+                    skipFolders, skipFolderPathPattern
+            );
             Files.walkFileTree(basePath, collector);
-            DeletionProcessor processor = new DeletionProcessor(basePath, collector.getFilesToDelete(), collector.getDirectoriesToDelete(), collector.getFilesToSkip(), collector.getDirectoriesToSkip());
-            if (selectMethod.equalsIgnoreCase(PROCESS_ONLY_FILE_TYPE) || selectMethod.equalsIgnoreCase(PROCESS_ALL_TYPES)) {
-                this.delete(processor.getFilesToDelete(), unableToDeleteBehavior);
+
+            // Phase 2: Process the data - resolve conflicts between delete and skip lists
+            DeletionProcessor processor = new DeletionProcessor(
+                    basePath,
+                    collector.getFilesToDelete(),
+                    collector.getDirectoriesToDelete(),
+                    collector.getFilesToSkip(),
+                    collector.getDirectoriesToSkip()
+            );
+
+            // Phase 3: Execute deletions
+            if (selectMethod.equalsIgnoreCase(PROCESS_ONLY_FILE_TYPE) ||
+                    selectMethod.equalsIgnoreCase(PROCESS_ALL_TYPES)) {
+                delete(processor.getFilesToDelete(), unableToDeleteBehavior);
             }
+
             if (selectMethod.equalsIgnoreCase(PROCESS_ALL_TYPES)) {
-                this.delete(processor.getSortedDirectoriesToDelete(), unableToDeleteBehavior);
+                delete(processor.getSortedDirectoriesToDelete(), unableToDeleteBehavior);
             }
+
             LOGGER.info("Deletion process completed successfully");
-        }
-        catch (IOException e) {
+
+        } catch (IOException e) {
             LOGGER.severe("IO error occurred: " + e.getMessage());
             if (unableToDeleteBehavior.equalsIgnoreCase(ERROR_THROW)) {
                 throw new BotCommandException("IO error: " + e.getMessage(), e);
             }
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             LOGGER.severe("Unexpected error: " + e.getMessage());
             throw new BotCommandException("Error: " + e.getMessage(), e);
         }
@@ -173,32 +181,29 @@ public class DeleteFilesFolders {
     private Instant calculateAgeThreshold(long threshold, String unit) {
         Instant now = Instant.now();
         switch (unit) {
-            case "DAY": {
+            case THRESHOLD_UNIT_DAY:
                 return now.minus(threshold, ChronoUnit.DAYS);
-            }
-            case "HOUR": {
+            case THRESHOLD_UNIT_HOUR:
                 return now.minus(threshold, ChronoUnit.HOURS);
-            }
-            case "MINUTE": {
+            case THRESHOLD_UNIT_MINUTE:
                 return now.minus(threshold, ChronoUnit.MINUTES);
-            }
-            case "SECOND": {
+            case THRESHOLD_UNIT_SECOND:
                 return now.minus(threshold, ChronoUnit.SECONDS);
-            }
+            default:
+                throw new IllegalArgumentException("Unsupported time unit: " + unit);
         }
-        throw new IllegalArgumentException("Unsupported time unit: " + unit);
     }
 
     private void delete(List<Path> pathsToDelete, String unableToDeleteBehavior) {
         for (Path path : pathsToDelete) {
             try {
-                LOGGER.info("Deleting: " + String.valueOf(path));
+                LOGGER.info("Deleting: " + path);
                 FileUtils.forceDelete(path.toFile());
-            }
-            catch (IOException e) {
-                LOGGER.warning("Failed to delete " + String.valueOf(path) + ": " + e.getMessage());
-                if (!unableToDeleteBehavior.equalsIgnoreCase(ERROR_THROW)) continue;
-                throw new BotCommandException("Failed to delete " + String.valueOf(path) + ": " + e.getMessage(), e);
+            } catch (IOException e) {
+                LOGGER.warning("Failed to delete " + path + ": " + e.getMessage());
+                if (unableToDeleteBehavior.equalsIgnoreCase(ERROR_THROW)) {
+                    throw new BotCommandException("Failed to delete " + path + ": " + e.getMessage(), e);
+                }
             }
         }
     }
@@ -242,60 +247,71 @@ public class DeleteFilesFolders {
 
         @Override
         public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
-            if (dir.equals(this.basePath)) {
+            // Skip processing of the base path for deletion (never delete the base path)
+            if (dir.equals(basePath)) {
                 return FileVisitResult.CONTINUE;
             }
-            if (this.skipFolders && this.matchesPattern(dir.toFile().getAbsolutePath(), this.skipFolderPathPattern)) {
-                LOGGER.info("Skipping directory based on pattern: " + String.valueOf(dir));
-                this.directoriesToSkip.add(dir);
+
+            // Check if this directory should be skipped based on pattern
+            if (skipFolders && matchesPattern(dir.toFile().getAbsolutePath(), skipFolderPathPattern)) {
+                LOGGER.info("Skipping directory based on pattern: " + dir);
+                directoriesToSkip.add(dir);
+                return FileVisitResult.SKIP_SUBTREE; // Don't process contents of skipped directories
+            }
+
+            // Check if directory meets age criteria for deletion regardless of recursive setting
+            // The actual deletion will be controlled by selectMethod parameter
+            if (meetsDeletionCriteria(attrs)) {
+                LOGGER.info("Marking directory for potential deletion: " + dir);
+                directoriesToDelete.add(dir);
+            }
+
+            // If not recursive, skip traversing into subdirectories after processing current directory
+            if (!recursive) {
                 return FileVisitResult.SKIP_SUBTREE;
             }
-            if (this.meetsDeletionCriteria(attrs)) {
-                LOGGER.info("Marking directory for potential deletion: " + String.valueOf(dir));
-                this.directoriesToDelete.add(dir);
-            }
-            if (!this.recursive) {
-                return FileVisitResult.SKIP_SUBTREE;
-            }
+
             return FileVisitResult.CONTINUE;
         }
 
         @Override
         public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
-            if (this.skipFiles && this.matchesPattern(file.toFile().getAbsolutePath(), this.skipFilePathPattern)) {
-                LOGGER.info("Skipping file based on pattern: " + String.valueOf(file));
-                this.filesToSkip.add(file);
+            // Check if this file should be skipped based on pattern
+            if (skipFiles && matchesPattern(file.toFile().getAbsolutePath(), skipFilePathPattern)) {
+                LOGGER.info("Skipping file based on pattern: " + file);
+                filesToSkip.add(file);
                 return FileVisitResult.CONTINUE;
             }
-            if (this.meetsDeletionCriteria(attrs)) {
-                LOGGER.info("Marking file for deletion: " + String.valueOf(file));
-                this.filesToDelete.add(file);
+
+            // Check if this file meets the age criteria for deletion
+            if (meetsDeletionCriteria(attrs)) {
+                LOGGER.info("Marking file for deletion: " + file);
+                filesToDelete.add(file);
             }
+
             return FileVisitResult.CONTINUE;
         }
 
         @Override
         public FileVisitResult visitFileFailed(Path file, IOException exc) {
-            LOGGER.warning("Failed to visit file: " + String.valueOf(file) + " - " + exc.getMessage());
+            LOGGER.warning("Failed to visit file: " + file + " - " + exc.getMessage());
             return FileVisitResult.CONTINUE;
         }
 
         private boolean meetsDeletionCriteria(BasicFileAttributes attrs) {
             Instant fileTime;
-            switch (this.thresholdCriteria) {
-                case "CREATION": {
+            switch (thresholdCriteria) {
+                case THRESHOLD_CRITERIA_CREATION:
                     fileTime = attrs.creationTime().toInstant();
                     break;
-                }
-                case "MODIFICATION": {
+                case THRESHOLD_CRITERIA_MODIFICATION:
                     fileTime = attrs.lastModifiedTime().toInstant();
                     break;
-                }
-                default: {
-                    throw new IllegalArgumentException("Unsupported threshold criteria: " + this.thresholdCriteria);
-                }
+                default:
+                    throw new IllegalArgumentException("Unsupported threshold criteria: " + thresholdCriteria);
             }
-            return fileTime.isBefore(this.deletionThresholdInstant);
+
+            return fileTime.isBefore(deletionThresholdInstant); // older than threshold
         }
 
         private boolean matchesPattern(String pathString, String pattern) {
@@ -303,19 +319,19 @@ public class DeleteFilesFolders {
         }
 
         public Set<Path> getFilesToDelete() {
-            return this.filesToDelete;
+            return filesToDelete;
         }
 
         public Set<Path> getDirectoriesToDelete() {
-            return this.directoriesToDelete;
+            return directoriesToDelete;
         }
 
         public Set<Path> getFilesToSkip() {
-            return this.filesToSkip;
+            return filesToSkip;
         }
 
         public Set<Path> getDirectoriesToSkip() {
-            return this.directoriesToSkip;
+            return directoriesToSkip;
         }
     }
 
@@ -336,34 +352,47 @@ public class DeleteFilesFolders {
                 Set<Path> filesToSkip,
                 Set<Path> directoriesToSkip) {
             this.basePath = basePath;
-            this.filesToDelete = new HashSet<Path>(filesToDelete);
-            this.directoriesToDelete = new HashSet<Path>(directoriesToDelete);
-            this.directoriesToPreserve.add(basePath);
+            this.filesToDelete = new HashSet<>(filesToDelete);
+            this.directoriesToDelete = new HashSet<>(directoriesToDelete);
+
+            // Always preserve the base path
+            directoriesToPreserve.add(basePath);
+
+            // Process skipped files - preserve their parent directories
             for (Path skippedFile : filesToSkip) {
-                this.addParentsToPreserveList(skippedFile);
+                addParentsToPreserveList(skippedFile);
             }
+
+            // Process skipped directories - preserve them and their parent directories
             for (Path skippedDir : directoriesToSkip) {
-                this.directoriesToPreserve.add(skippedDir);
-                this.addParentsToPreserveList(skippedDir);
+                directoriesToPreserve.add(skippedDir);
+                addParentsToPreserveList(skippedDir);
             }
-            this.directoriesToDelete.removeAll(this.directoriesToPreserve);
+
+            // Remove preserved directories from deletion list
+            this.directoriesToDelete.removeAll(directoriesToPreserve);
+
             LOGGER.info("Files to delete after processing: " + this.filesToDelete.size());
             LOGGER.info("Directories to delete after processing: " + this.directoriesToDelete.size());
-            LOGGER.info("Directories preserved for containing skipped items: " + (this.directoriesToPreserve.size() - 1));
+            LOGGER.info("Directories preserved for containing skipped items: " +
+                    (directoriesToPreserve.size() - 1)); // -1 for basePath
         }
 
         private void addParentsToPreserveList(Path path) {
-            for (Path parent = path.getParent(); parent != null && !parent.equals(this.basePath); parent = parent.getParent()) {
-                this.directoriesToPreserve.add(parent);
+            Path parent = path.getParent();
+            while (parent != null && !parent.equals(basePath)) {
+                directoriesToPreserve.add(parent);
+                parent = parent.getParent();
             }
         }
 
         public List<Path> getFilesToDelete() {
-            return new ArrayList<Path>(this.filesToDelete);
+            return new ArrayList<>(filesToDelete);
         }
 
         public List<Path> getSortedDirectoriesToDelete() {
-            ArrayList<Path> sortedDirectories = new ArrayList<Path>(this.directoriesToDelete);
+            List<Path> sortedDirectories = new ArrayList<>(directoriesToDelete);
+            // Sort by depth (descending) - delete deepest directories first
             sortedDirectories.sort((p1, p2) -> Integer.compare(p2.getNameCount(), p1.getNameCount()));
             return sortedDirectories;
         }

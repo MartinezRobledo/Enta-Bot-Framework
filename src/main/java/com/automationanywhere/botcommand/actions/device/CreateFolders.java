@@ -1,10 +1,5 @@
 package com.automationanywhere.botcommand.actions.device;
 
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.FilenameUtils;
-import java.nio.file.LinkOption;
-import java.nio.file.attribute.FileAttribute;
-
 import com.automationanywhere.botcommand.data.Value;
 import com.automationanywhere.botcommand.data.impl.DictionaryValue;
 import com.automationanywhere.botcommand.data.impl.StringValue;
@@ -91,36 +86,43 @@ public class CreateFolders {
             String prefix
     ) {
         try {
-            HashMap<String, Value> returnDictionary = new HashMap<String, Value>();
+            Map<String, Value> returnDictionary = new HashMap<>();
             if (configDictionary == null) {
-                configDictionary = new HashMap<String, Value>();
+                configDictionary = new HashMap<>();
             }
+
             if (suffix == null) {
                 suffix = "";
             }
+
             if (prefix == null) {
                 suffix = "";
             }
+
             for (Value folderPathValue : folderPaths) {
-                Path directoryPath;
-                String folderPath = Paths.get(folderPathValue.get().toString(), new String[0]).toString();
+                String folderPath = Paths.get(folderPathValue.get().toString()).toString();
+
                 if (PATH_RELATIVE.equalsIgnoreCase(pathType)) {
                     folderPath = Paths.get(baseFolderPath, folderPath).toString();
                 }
-                if (Files.exists(directoryPath = Paths.get(folderPath, new String[0]), new LinkOption[0]) && overwriteExisting.booleanValue()) {
+
+                Path directoryPath = Paths.get(folderPath);
+                if (Files.exists(directoryPath) && overwriteExisting) {
                     FileUtils.deleteDirectory(directoryPath.toFile());
                 }
-                Files.createDirectories(directoryPath, new FileAttribute[0]);
+
+                Files.createDirectories(directoryPath);
                 String key = prefix + FilenameUtils.getName(folderPath) + suffix;
-                if (appendToExistingDictionary.booleanValue()) {
+                if (appendToExistingDictionary) {
                     configDictionary.put(key, new StringValue(directoryPath.toString()));
                 }
                 returnDictionary.put(key, new StringValue(directoryPath.toString()));
             }
+
             return new DictionaryValue(returnDictionary);
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             throw new BotCommandException(e.getMessage());
         }
+
     }
 }

@@ -1,8 +1,5 @@
 package com.automationanywhere.botcommand.actions.workqueues;
 
-import java.sql.Connection;
-import java.time.ZonedDateTime;
-
 import com.automationanywhere.botcommand.exception.BotCommandException;
 import com.automationanywhere.botcommand.utilities.workqueue.AccessExecutor;
 import com.automationanywhere.botcommand.utilities.workqueue.WorkqueueItemDao;
@@ -13,6 +10,9 @@ import com.automationanywhere.commandsdk.model.DataType;
 
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 
 
@@ -72,38 +72,46 @@ public class DeferWorkItem {
     ) {
         try {
             AccessExecutor.executeVoidWithConnection(filePath, conn -> {
+                WorkqueueItemDao dao = new WorkqueueItemDao(conn);
+
                 Timestamp ts;
-                WorkqueueItemDao dao = new WorkqueueItemDao((Connection)conn);
                 if ("offset".equalsIgnoreCase(selectBy)) {
-                    if (deferOffset == null || deferOffset <= 0.0) {
+                    if (deferOffset == null || deferOffset <= 0) {
                         throw new BotCommandException("El offset debe ser un número mayor a 0.");
                     }
-                    ts = Timestamp.from(Instant.now().plusSeconds((long)(deferOffset * 60.0)));
+                    ts = Timestamp.from(Instant.now().plusSeconds((long) (deferOffset * 60)));
                 } else {
                     if (deferUntil == null) {
                         throw new BotCommandException("Debe indicar la fecha/hora destino.");
                     }
                     ts = Timestamp.from(deferUntil.toInstant());
                 }
+
                 if ("id".equalsIgnoreCase(identifyBy)) {
-                    if (itemId == null) {
-                        throw new BotCommandException("Debe indicar el Item Id.");
-                    }
+                    if (itemId == null) throw new BotCommandException("Debe indicar el Item Id.");
                     dao.deferFromWorkingById(itemId.longValue(), ts);
                 } else if ("key".equalsIgnoreCase(identifyBy)) {
-                    if (itemKey == null || itemKey.isBlank()) {
+                    if (itemKey == null || itemKey.isBlank())
                         throw new BotCommandException("Debe indicar el Item Key.");
-                    }
                     dao.deferFromWorkingByKey(itemKey, ts);
                 } else {
                     throw new BotCommandException("Valor inválido en 'Identificar ítem por': " + identifyBy);
                 }
             });
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             throw new BotCommandException("Defer Work Item: " + e.getMessage(), e);
         }
     }
 
-
+    private static Timestamp parseToTimestamp(String input) {
+        try {
+            return Timestamp.from(OffsetDateTime.parse(input).toInstant()); // ISO-8601
+        } catch (Exception e) {
+            try {
+                return Timestamp.valueOf(LocalDateTime.parse(input, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+            } catch (Exception ex) {
+                throw new BotCommandException("Formato de fecha no válido: " + input);
+            }
+        }
+    }
 }

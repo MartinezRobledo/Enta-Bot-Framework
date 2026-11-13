@@ -1,9 +1,6 @@
 // src/main/java/com/automationanywhere/botcommand/actions/workqueues/AddItemDataField.java
 package com.automationanywhere.botcommand.actions.workqueues;
 
-import com.automationanywhere.botcommand.utilities.workqueue.Helpers;
-import java.sql.Connection;
-
 import com.automationanywhere.botcommand.data.impl.DictionaryValue;
 import com.automationanywhere.botcommand.exception.BotCommandException;
 import com.automationanywhere.botcommand.utilities.workqueue.AccessExecutor;
@@ -15,6 +12,7 @@ import com.automationanywhere.commandsdk.model.AttributeType;
 import com.automationanywhere.commandsdk.model.DataType;
 
 import java.util.LinkedHashMap;
+import java.util.Map;
 
 import static com.automationanywhere.botcommand.utilities.workqueue.Helpers.toDictionary;
 
@@ -63,47 +61,48 @@ public class AddItemDataField {
             String dataValue
     ) {
         try {
+            // 1) Encolar en memoria (no impacta BD)
             ItemDataTxnBuffer.ScopeKey scope;
             boolean byId;
             if ("id".equalsIgnoreCase(identifyBy)) {
-                if (itemId == null) {
-                    throw new BotCommandException("Debe indicar el Item Id.");
-                }
+                if (itemId == null) throw new BotCommandException("Debe indicar el Item Id.");
                 byId = true;
                 scope = ItemDataTxnBuffer.scopeById(filePath, itemId.longValue());
             } else if ("key".equalsIgnoreCase(identifyBy)) {
-                if (itemKey == null || itemKey.isBlank()) {
-                    throw new BotCommandException("Debe indicar el Item Key.");
-                }
+                if (itemKey == null || itemKey.isBlank()) throw new BotCommandException("Debe indicar el Item Key.");
                 byId = false;
                 scope = ItemDataTxnBuffer.scopeByKey(filePath, itemKey);
             } else {
                 throw new BotCommandException("Valor inválido en 'Identificar ítem por': " + identifyBy);
             }
+
             try {
                 ItemDataTxnBuffer.addInsert(scope, dataKey, dataValue);
-            }
-            catch (IllegalArgumentException | IllegalStateException ex) {
+            } catch (IllegalStateException | IllegalArgumentException ex) {
                 throw new BotCommandException(ex.getMessage(), ex);
             }
+
+            // 2) Leer desde BD y devolver "previsualización" (BD + staging)
             boolean finalById = byId;
             return AccessExecutor.executeWithConnection(filePath, conn -> {
-                WorkqueueItemDao.WorkItem base;
-                WorkqueueItemDao dao = new WorkqueueItemDao((Connection)conn);
-                WorkqueueItemDao.WorkItem workItem = base = finalById ? dao.readWorkItemById(itemId.longValue()) : dao.readWorkItemByKey(itemKey);
-                if (base == null) {
-                    throw new BotCommandException("El ítem no existe.");
-                }
-                LinkedHashMap<String, String> effective = new LinkedHashMap<String, String>();
-                if (base.data != null) {
-                    effective.putAll(base.data);
-                }
+                WorkqueueItemDao dao = new WorkqueueItemDao(conn);
+                WorkqueueItemDao.WorkItem base = finalById
+                        ? dao.readWorkItemById(itemId.longValue())
+                        : dao.readWorkItemByKey(itemKey);
+
+                if (base == null) throw new BotCommandException("El ítem no existe.");
+
+                Map<String,String> effective = new LinkedHashMap<>();
+                if (base.data != null) effective.putAll(base.data);
                 ItemDataTxnBuffer.peek(scope).forEach(effective::put);
-                WorkqueueItemDao.WorkItem preview = new WorkqueueItemDao.WorkItem(base.id, base.key, base.statusWorkflow, base.stepWorkflow, effective);
-                return Helpers.toDictionary(preview);
+
+                WorkqueueItemDao.WorkItem preview = new WorkqueueItemDao.WorkItem(
+                        base.id, base.key, base.statusWorkflow, base.stepWorkflow, effective
+                );
+                return toDictionary(preview);
             });
-        }
-        catch (Exception e) {
+
+        } catch (Exception e) {
             throw new BotCommandException("AddItemDataField (staging) falló: " + e.getMessage(), e);
         }
     }

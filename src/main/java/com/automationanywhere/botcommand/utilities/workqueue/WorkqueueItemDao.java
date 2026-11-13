@@ -1,13 +1,5 @@
 package com.automationanywhere.botcommand.utilities.workqueue;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Timestamp;
-import java.time.Instant;
-import java.util.HashSet;
-
 import java.sql.*;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -68,118 +60,47 @@ public class WorkqueueItemDao {
     }
 
 
-    public WorkqueueItemDao(Connection conn) {
-        this.conn = conn;
-    }
+    public WorkqueueItemDao(Connection conn) { this.conn = conn; }
 
     private Timestamp nowTs() {
-        return Timestamp.from(Instant.now());
+        return Timestamp.from(java.time.Instant.now()); // UTC
     }
 
     // ---------- Utilidades para mensajes claros ----------
     private ModState fetchStateByKey(String key) throws SQLException {
-        String sql = "SELECT [Status],[Defer Until] FROM [workqueue] WHERE [Key]=?";
-        try (PreparedStatement ps = this.conn.prepareStatement(sql);){
-            ModState modState;
-            block16: {
-                ResultSet rs;
-                block14: {
-                    ModState modState2;
-                    block15: {
-                        ps.setString(1, key);
-                        rs = ps.executeQuery();
-                        try {
-                            if (rs.next()) break block14;
-                            modState2 = null;
-                            if (rs == null) break block15;
-                        }
-                        catch (Throwable throwable) {
-                            if (rs != null) {
-                                try {
-                                    rs.close();
-                                }
-                                catch (Throwable throwable2) {
-                                    throwable.addSuppressed(throwable2);
-                                }
-                            }
-                            throw throwable;
-                        }
-                        rs.close();
-                    }
-                    return modState2;
-                }
-                modState = new ModState(rs.getString(1), rs.getTimestamp(2));
-                if (rs == null) break block16;
-                rs.close();
+        String sql = "SELECT " + COL_STATUS + "," + COL_DEFER_UNTIL + " FROM " + TBL_WQ + " WHERE " + COL_KEY + "=?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, key);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) return null;
+                return new ModState(rs.getString(1), rs.getTimestamp(2));
             }
-            return modState;
         }
     }
     private ModState fetchStateById(long id) throws SQLException {
-        String sql = "SELECT [Status],[Defer Until] FROM [workqueue] WHERE [Id]=?";
-        try (PreparedStatement ps = this.conn.prepareStatement(sql);){
-            ModState modState;
-            block16: {
-                ResultSet rs;
-                block14: {
-                    ModState modState2;
-                    block15: {
-                        ps.setLong(1, id);
-                        rs = ps.executeQuery();
-                        try {
-                            if (rs.next()) break block14;
-                            modState2 = null;
-                            if (rs == null) break block15;
-                        }
-                        catch (Throwable throwable) {
-                            if (rs != null) {
-                                try {
-                                    rs.close();
-                                }
-                                catch (Throwable throwable2) {
-                                    throwable.addSuppressed(throwable2);
-                                }
-                            }
-                            throw throwable;
-                        }
-                        rs.close();
-                    }
-                    return modState2;
-                }
-                modState = new ModState(rs.getString(1), rs.getTimestamp(2));
-                if (rs == null) break block16;
-                rs.close();
+        String sql = "SELECT " + COL_STATUS + "," + COL_DEFER_UNTIL + " FROM " + TBL_WQ + " WHERE " + COL_ID + "=?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, id);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) return null;
+                return new ModState(rs.getString(1), rs.getTimestamp(2));
             }
-            return modState;
         }
     }
     private static final class ModState {
         final String status; final Timestamp deferUntil;
-        ModState(String s, Timestamp d) {
-            this.status = s;
-            this.deferUntil = d;
-        }
+        ModState(String s, Timestamp d) { status=s; deferUntil=d; }
     }
     private SQLException explainNotUpdatableByKey(String key, ModState st, Timestamp now) {
-        boolean deferred;
-        if (st == null) {
-            return new SQLException("Item no encontrado (Key): " + key);
-        }
-        boolean bl = deferred = st.deferUntil != null && st.deferUntil.after(now);
-        if (deferred) {
-            return new SQLException("Item '" + key + "' diferido hasta " + String.valueOf(st.deferUntil) + ".");
-        }
+        if (st == null) return new SQLException("Item no encontrado (Key): " + key);
+        boolean deferred = st.deferUntil != null && st.deferUntil.after(now);
+        if (deferred) return new SQLException("Item '" + key + "' diferido hasta " + st.deferUntil + ".");
         return new SQLException("Item '" + key + "' no es modificable en estado " + st.status + ".");
     }
     private SQLException explainNotUpdatableById(long id, ModState st, Timestamp now) {
-        boolean deferred;
-        if (st == null) {
-            return new SQLException("Item no encontrado (Id): " + id);
-        }
-        boolean bl = deferred = st.deferUntil != null && st.deferUntil.after(now);
-        if (deferred) {
-            return new SQLException("Item Id=" + id + " diferido hasta " + String.valueOf(st.deferUntil) + ".");
-        }
+        if (st == null) return new SQLException("Item no encontrado (Id): " + id);
+        boolean deferred = st.deferUntil != null && st.deferUntil.after(now);
+        if (deferred) return new SQLException("Item Id=" + id + " diferido hasta " + st.deferUntil + ".");
         return new SQLException("Item Id=" + id + " no es modificable en estado " + st.status + ".");
     }
 
@@ -187,61 +108,88 @@ public class WorkqueueItemDao {
     //                    GET NEXT ITEM (PENDING → WORKING)
     // ==========================================================
     public WorkItem takeNextPendingAndSetWorking() throws SQLException {
-        boolean prevAuto = this.conn.getAutoCommit();
+        boolean prevAuto = conn.getAutoCommit();
         try {
-            String stepWf;
-            Long statusWf;
-            String key;
-            Long id;
-            Timestamp now;
-            block28: {
-                now = this.nowTs();
-                id = null;
-                key = null;
-                statusWf = null;
-                stepWf = null;
-                String sel = "SELECT TOP 1 [Id],[Key],[Status Workflow],[Step Workflow] FROM [workqueue] WHERE [Status]=? AND ([Defer Until] IS NULL OR [Defer Until] <= ?) ORDER BY [Priority] ASC, [Created Date] ASC, [Id] ASC";
-                try (PreparedStatement ps = this.conn.prepareStatement(sel);){
-                    ps.setString(1, ST_PENDING);
-                    ps.setTimestamp(2, now);
-                    try (ResultSet rs = ps.executeQuery();){
-                        if (rs.next()) {
-                            id = rs.getLong(1);
-                            key = rs.getString(2);
-                            statusWf = rs.getLong(3);
-                            stepWf = rs.getString(4);
-                            break block28;
-                        }
-                        this.conn.commit();
-                        WorkItem workItem = null;
-                        return workItem;
+            final Timestamp now = nowTs();
+            Long id = null; String key = null; Long statusWf = null; String stepWf = null;
+
+            String sel = "SELECT TOP 1 " + COL_ID + "," + COL_KEY + "," + COL_STATUS_WF + "," + COL_STEP_WF +
+                    " FROM " + TBL_WQ +
+                    " WHERE " + COL_STATUS + "=? AND (" + COL_DEFER_UNTIL + " IS NULL OR " + COL_DEFER_UNTIL + " <= ?)" +
+                    " ORDER BY " + COL_PRIORITY + " ASC, " + COL_CREATED + " ASC, " + COL_ID + " ASC";
+            try (PreparedStatement ps = conn.prepareStatement(sel)) {
+                ps.setString(1, ST_PENDING);
+                ps.setTimestamp(2, now);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        id       = rs.getLong(1);
+                        key      = rs.getString(2);
+                        statusWf = rs.getLong(3);
+                        stepWf   = rs.getString(4);
+                    } else {
+                        conn.commit();
+                        return null; // no hay elegibles
                     }
                 }
             }
-            String upd = "UPDATE [workqueue] SET [Status]=?, [Last Updated]=? WHERE [Id]=? AND [Status]=? AND ([Defer Until] IS NULL OR [Defer Until] <= ?)";
-            try (PreparedStatement ps = this.conn.prepareStatement(upd);){
+
+            String upd = "UPDATE " + TBL_WQ + " SET " + COL_STATUS + "=?, " + COL_UPDATED + "=? " +
+                    "WHERE " + COL_ID + "=? AND " + COL_STATUS + "=? AND (" + COL_DEFER_UNTIL + " IS NULL OR " + COL_DEFER_UNTIL + " <= ?)";
+            try (PreparedStatement ps = conn.prepareStatement(upd)) {
                 ps.setString(1, ST_WORKING);
                 ps.setTimestamp(2, now);
                 ps.setLong(3, id);
                 ps.setString(4, ST_PENDING);
                 ps.setTimestamp(5, now);
-                if (ps.executeUpdate() == 0) {
-                    this.conn.commit();
-                    WorkItem workItem = null;
-                    return workItem;
+                if (ps.executeUpdate() == 0) { // carrera: otro worker lo tomó
+                    conn.commit();
+                    return null;
                 }
             }
-            this.conn.commit();
-            Map<String, String> data = this.getItemDataById(id);
-            WorkItem workItem = new WorkItem(id, key, statusWf, stepWf, data);
-            return workItem;
-        }
-        catch (SQLException ex) {
-            this.conn.rollback();
+            conn.commit();
+            Map<String,String> data = getItemDataById(id);
+            return new WorkItem(id, key, statusWf, stepWf, data);
+        } catch (SQLException ex) {
+            conn.rollback();
             throw ex;
+        } finally {
+            conn.setAutoCommit(prevAuto);
         }
-        finally {
-            this.conn.setAutoCommit(prevAuto);
+    }
+
+    // ==========================================================
+    //                    GET LAST ITEM (SIN CAMBIAR ESTADO)
+    // ==========================================================
+    public WorkItem getLastItem() throws SQLException {
+        boolean prevAuto = conn.getAutoCommit();
+        try {
+            Long id = null; String key = null; Long statusWf = null; String stepWf = null;
+
+            String sel = "SELECT TOP 1 " + COL_ID + "," + COL_KEY + "," + COL_STATUS_WF + "," + COL_STEP_WF +
+                    " FROM " + TBL_WQ +
+                    " ORDER BY " + COL_CREATED + " DESC, " + COL_ID + " DESC";
+            try (PreparedStatement ps = conn.prepareStatement(sel)) {
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        id       = rs.getLong(1);
+                        key      = rs.getString(2);
+                        statusWf = rs.getLong(3);
+                        stepWf   = rs.getString(4);
+                    } else {
+                        conn.commit();
+                        return null; // no hay ítems
+                    }
+                }
+            }
+
+            conn.commit();
+            Map<String,String> data = getItemDataById(id);
+            return new WorkItem(id, key, statusWf, stepWf, data);
+        } catch (SQLException ex) {
+            conn.rollback();
+            throw ex;
+        } finally {
+            conn.setAutoCommit(prevAuto);
         }
     }
 
@@ -249,56 +197,54 @@ public class WorkqueueItemDao {
     //                WORKING → COMPLETED
     // ==========================================================
     public WorkItem completeFromWorkingByKey(String key) throws SQLException {
-        Timestamp now = this.nowTs();
-        boolean prevAuto = this.conn.getAutoCommit();
+        final Timestamp now = nowTs();
+        boolean prevAuto = conn.getAutoCommit();
         try {
-            String sql = "UPDATE [workqueue] SET [Status]=?,[Last Updated]=? WHERE [Key]=? AND [Status]=?";
-            try (PreparedStatement ps = this.conn.prepareStatement(sql);){
+            String sql = "UPDATE " + TBL_WQ + " SET " +
+                    COL_STATUS + "=?," + COL_UPDATED + "=? " +
+                    "WHERE " + COL_KEY + "=? AND " + COL_STATUS + "=?";
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 ps.setString(1, ST_COMPLETED);
                 ps.setTimestamp(2, now);
                 ps.setString(3, key);
                 ps.setString(4, ST_WORKING);
                 if (ps.executeUpdate() == 0) {
-                    throw this.explainNotUpdatableByKey(key, this.fetchStateByKey(key), now);
+                    throw explainNotUpdatableByKey(key, fetchStateByKey(key), now);
                 }
             }
-            this.conn.commit();
-            WorkItem workItem = this.buildWorkItemByKey(key);
-            return workItem;
-        }
-        catch (SQLException ex) {
-            this.conn.rollback();
+            conn.commit();
+            return buildWorkItemByKey(key);
+        } catch (SQLException ex) {
+            conn.rollback();
             throw ex;
-        }
-        finally {
-            this.conn.setAutoCommit(prevAuto);
+        } finally {
+            conn.setAutoCommit(prevAuto);
         }
     }
 
     public WorkItem completeFromWorkingById(long itemId) throws SQLException {
-        Timestamp now = this.nowTs();
-        boolean prevAuto = this.conn.getAutoCommit();
+        final Timestamp now = nowTs();
+        boolean prevAuto = conn.getAutoCommit();
         try {
-            String sql = "UPDATE [workqueue] SET [Status]=?,[Last Updated]=? WHERE [Id]=? AND [Status]=?";
-            try (PreparedStatement ps = this.conn.prepareStatement(sql);){
+            String sql = "UPDATE " + TBL_WQ + " SET " +
+                    COL_STATUS + "=?," + COL_UPDATED + "=? " +
+                    "WHERE " + COL_ID + "=? AND " + COL_STATUS + "=?";
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 ps.setString(1, ST_COMPLETED);
                 ps.setTimestamp(2, now);
                 ps.setLong(3, itemId);
                 ps.setString(4, ST_WORKING);
                 if (ps.executeUpdate() == 0) {
-                    throw this.explainNotUpdatableById(itemId, this.fetchStateById(itemId), now);
+                    throw explainNotUpdatableById(itemId, fetchStateById(itemId), now);
                 }
             }
-            this.conn.commit();
-            WorkItem workItem = this.buildWorkItemById(itemId);
-            return workItem;
-        }
-        catch (SQLException ex) {
-            this.conn.rollback();
+            conn.commit();
+            return buildWorkItemById(itemId);
+        } catch (SQLException ex) {
+            conn.rollback();
             throw ex;
-        }
-        finally {
-            this.conn.setAutoCommit(prevAuto);
+        } finally {
+            conn.setAutoCommit(prevAuto);
         }
     }
 
@@ -306,58 +252,56 @@ public class WorkqueueItemDao {
     //                WORKING → EXCEPTION
     // ==========================================================
     public WorkItem exceptionFromWorkingByKey(String key, String reason) throws SQLException {
-        Timestamp now = this.nowTs();
-        boolean prevAuto = this.conn.getAutoCommit();
+        final Timestamp now = nowTs();
+        boolean prevAuto = conn.getAutoCommit();
         try {
-            String sql = "UPDATE [workqueue] SET [Status]=?,[Exception Reason]=?,[Last Updated]=? WHERE [Key]=? AND [Status]=?";
-            try (PreparedStatement ps = this.conn.prepareStatement(sql);){
+            String sql = "UPDATE " + TBL_WQ + " SET " +
+                    COL_STATUS + "=?," + COL_EXC_REASON + "=?," + COL_UPDATED + "=? " +
+                    "WHERE " + COL_KEY + "=? AND " + COL_STATUS + "=?";
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 ps.setString(1, ST_EXCEPTION);
                 ps.setString(2, reason);
                 ps.setTimestamp(3, now);
                 ps.setString(4, key);
                 ps.setString(5, ST_WORKING);
                 if (ps.executeUpdate() == 0) {
-                    throw this.explainNotUpdatableByKey(key, this.fetchStateByKey(key), now);
+                    throw explainNotUpdatableByKey(key, fetchStateByKey(key), now);
                 }
             }
-            this.conn.commit();
-            WorkItem workItem = this.buildWorkItemByKey(key);
-            return workItem;
-        }
-        catch (SQLException ex) {
-            this.conn.rollback();
+            conn.commit();
+            return buildWorkItemByKey(key);
+        } catch (SQLException ex) {
+            conn.rollback();
             throw ex;
-        }
-        finally {
-            this.conn.setAutoCommit(prevAuto);
+        } finally {
+            conn.setAutoCommit(prevAuto);
         }
     }
 
     public WorkItem exceptionFromWorkingById(long itemId, String reason) throws SQLException {
-        Timestamp now = this.nowTs();
-        boolean prevAuto = this.conn.getAutoCommit();
+        final Timestamp now = nowTs();
+        boolean prevAuto = conn.getAutoCommit();
         try {
-            String sql = "UPDATE [workqueue] SET [Status]=?,[Exception Reason]=?,[Last Updated]=? WHERE [Id]=? AND [Status]=?";
-            try (PreparedStatement ps = this.conn.prepareStatement(sql);){
+            String sql = "UPDATE " + TBL_WQ + " SET " +
+                    COL_STATUS + "=?," + COL_EXC_REASON + "=?," + COL_UPDATED + "=? " +
+                    "WHERE " + COL_ID + "=? AND " + COL_STATUS + "=?";
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 ps.setString(1, ST_EXCEPTION);
                 ps.setString(2, reason);
                 ps.setTimestamp(3, now);
                 ps.setLong(4, itemId);
                 ps.setString(5, ST_WORKING);
                 if (ps.executeUpdate() == 0) {
-                    throw this.explainNotUpdatableById(itemId, this.fetchStateById(itemId), now);
+                    throw explainNotUpdatableById(itemId, fetchStateById(itemId), now);
                 }
             }
-            this.conn.commit();
-            WorkItem workItem = this.buildWorkItemById(itemId);
-            return workItem;
-        }
-        catch (SQLException ex) {
-            this.conn.rollback();
+            conn.commit();
+            return buildWorkItemById(itemId);
+        } catch (SQLException ex) {
+            conn.rollback();
             throw ex;
-        }
-        finally {
-            this.conn.setAutoCommit(prevAuto);
+        } finally {
+            conn.setAutoCommit(prevAuto);
         }
     }
 
@@ -365,51 +309,48 @@ public class WorkqueueItemDao {
     //                     WORKING → PENDING (DEFER)
     // ==========================================================
     public WorkItem deferFromWorkingByKey(String key, Timestamp deferUntil) throws SQLException {
-        if (deferUntil == null) {
-            throw new SQLException("Defer Until es obligatorio.");
-        }
-        Timestamp now = this.nowTs();
-        if (!deferUntil.after(now)) {
-            throw new SQLException("Defer Until debe ser futuro.");
-        }
-        boolean prevAuto = this.conn.getAutoCommit();
+        if (deferUntil == null) throw new SQLException("Defer Until es obligatorio.");
+        final Timestamp now = nowTs();
+        if (!deferUntil.after(now)) throw new SQLException("Defer Until debe ser futuro.");
+
+        boolean prevAuto = conn.getAutoCommit();
         try {
-            String sql = "UPDATE [workqueue] SET [Defer Until]=?,[Last Updated]=?, [Status]=? WHERE [Key]=? AND [Status]=? AND ([Defer Until] IS NULL OR [Defer Until] <= ?)";
-            try (PreparedStatement ps = this.conn.prepareStatement(sql);){
+            String sql = "UPDATE " + TBL_WQ + " SET " +
+                    COL_DEFER_UNTIL + "=?," + COL_UPDATED + "=?, " + COL_STATUS + "=? " +
+                    "WHERE " + COL_KEY + "=? AND " + COL_STATUS + "=? " +
+                    "AND (" + COL_DEFER_UNTIL + " IS NULL OR " + COL_DEFER_UNTIL + " <= ?)";
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 ps.setTimestamp(1, deferUntil);
                 ps.setTimestamp(2, now);
                 ps.setString(3, key);
                 ps.setString(4, ST_WORKING);
                 ps.setTimestamp(5, now);
                 if (ps.executeUpdate() == 0) {
-                    throw this.explainNotUpdatableByKey(key, this.fetchStateByKey(key), now);
+                    throw explainNotUpdatableByKey(key, fetchStateByKey(key), now);
                 }
             }
-            this.conn.commit();
-            WorkItem workItem = this.buildWorkItemByKey(key);
-            return workItem;
-        }
-        catch (SQLException ex) {
-            this.conn.rollback();
+            conn.commit();
+            return buildWorkItemByKey(key);
+        } catch (SQLException ex) {
+            conn.rollback();
             throw ex;
-        }
-        finally {
-            this.conn.setAutoCommit(prevAuto);
+        } finally {
+            conn.setAutoCommit(prevAuto);
         }
     }
 
     public WorkItem deferFromWorkingById(long itemId, Timestamp deferUntil) throws SQLException {
-        if (deferUntil == null) {
-            throw new SQLException("Defer Until es obligatorio.");
-        }
-        Timestamp now = this.nowTs();
-        if (!deferUntil.after(now)) {
-            throw new SQLException("Defer Until debe ser futuro.");
-        }
-        boolean prevAuto = this.conn.getAutoCommit();
+        if (deferUntil == null) throw new SQLException("Defer Until es obligatorio.");
+        final Timestamp now = nowTs();
+        if (!deferUntil.after(now)) throw new SQLException("Defer Until debe ser futuro.");
+
+        boolean prevAuto = conn.getAutoCommit();
         try {
-            String sql = "UPDATE [workqueue] SET [Defer Until]=?, [Last Updated]=?, [Status]=? WHERE [Id]=? AND [Status]=? AND ([Defer Until] IS NULL OR [Defer Until] <= ?)";
-            try (PreparedStatement ps = this.conn.prepareStatement(sql);){
+            String sql = "UPDATE " + TBL_WQ + " SET " +
+                    COL_DEFER_UNTIL + "=?, " + COL_UPDATED + "=?, " + COL_STATUS + "=? " +
+                    "WHERE " + COL_ID + "=? AND " + COL_STATUS + "=? " +
+                    "AND (" + COL_DEFER_UNTIL + " IS NULL OR " + COL_DEFER_UNTIL + " <= ?)";
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 ps.setTimestamp(1, deferUntil);
                 ps.setTimestamp(2, now);
                 ps.setString(3, ST_PENDING);
@@ -417,19 +358,16 @@ public class WorkqueueItemDao {
                 ps.setString(5, ST_WORKING);
                 ps.setTimestamp(6, now);
                 if (ps.executeUpdate() == 0) {
-                    throw this.explainNotUpdatableById(itemId, this.fetchStateById(itemId), now);
+                    throw explainNotUpdatableById(itemId, fetchStateById(itemId), now);
                 }
             }
-            this.conn.commit();
-            WorkItem workItem = this.buildWorkItemById(itemId);
-            return workItem;
-        }
-        catch (SQLException ex) {
-            this.conn.rollback();
+            conn.commit();
+            return buildWorkItemById(itemId);
+        } catch (SQLException ex) {
+            conn.rollback();
             throw ex;
-        }
-        finally {
-            this.conn.setAutoCommit(prevAuto);
+        } finally {
+            conn.setAutoCommit(prevAuto);
         }
     }
 
@@ -437,56 +375,54 @@ public class WorkqueueItemDao {
     //                     WORKING → PENDING (RELEASE)
     // ==========================================================
     public WorkItem releaseFromWorkingByKey(String key) throws SQLException {
-        Timestamp now = this.nowTs();
-        boolean prevAuto = this.conn.getAutoCommit();
+        final Timestamp now = nowTs();
+        boolean prevAuto = conn.getAutoCommit();
         try {
-            String sql = "UPDATE [workqueue] SET [Status]=?,[Last Updated]=? WHERE [Key]=? AND [Status]=?";
-            try (PreparedStatement ps = this.conn.prepareStatement(sql);){
+            String sql = "UPDATE " + TBL_WQ + " SET " +
+                    COL_STATUS + "=?," + COL_UPDATED + "=? " +
+                    "WHERE " + COL_KEY + "=? AND " + COL_STATUS + "=?";
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 ps.setString(1, ST_PENDING);
                 ps.setTimestamp(2, now);
                 ps.setString(3, key);
                 ps.setString(4, ST_WORKING);
                 if (ps.executeUpdate() == 0) {
-                    throw this.explainNotUpdatableByKey(key, this.fetchStateByKey(key), now);
+                    throw explainNotUpdatableByKey(key, fetchStateByKey(key), now);
                 }
             }
-            this.conn.commit();
-            WorkItem workItem = this.buildWorkItemByKey(key);
-            return workItem;
-        }
-        catch (SQLException ex) {
-            this.conn.rollback();
+            conn.commit();
+            return buildWorkItemByKey(key);
+        } catch (SQLException ex) {
+            conn.rollback();
             throw ex;
-        }
-        finally {
-            this.conn.setAutoCommit(prevAuto);
+        } finally {
+            conn.setAutoCommit(prevAuto);
         }
     }
 
     public WorkItem releaseFromWorkingById(long itemId) throws SQLException {
-        Timestamp now = this.nowTs();
-        boolean prevAuto = this.conn.getAutoCommit();
+        final Timestamp now = nowTs();
+        boolean prevAuto = conn.getAutoCommit();
         try {
-            String sql = "UPDATE [workqueue] SET [Status]=?,[Last Updated]=? WHERE [Id]=? AND [Status]=?";
-            try (PreparedStatement ps = this.conn.prepareStatement(sql);){
+            String sql = "UPDATE " + TBL_WQ + " SET " +
+                    COL_STATUS + "=?," + COL_UPDATED + "=? " +
+                    "WHERE " + COL_ID + "=? AND " + COL_STATUS + "=?";
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 ps.setString(1, ST_PENDING);
                 ps.setTimestamp(2, now);
                 ps.setLong(3, itemId);
                 ps.setString(4, ST_WORKING);
                 if (ps.executeUpdate() == 0) {
-                    throw this.explainNotUpdatableById(itemId, this.fetchStateById(itemId), now);
+                    throw explainNotUpdatableById(itemId, fetchStateById(itemId), now);
                 }
             }
-            this.conn.commit();
-            WorkItem workItem = this.buildWorkItemById(itemId);
-            return workItem;
-        }
-        catch (SQLException ex) {
-            this.conn.rollback();
+            conn.commit();
+            return buildWorkItemById(itemId);
+        } catch (SQLException ex) {
+            conn.rollback();
             throw ex;
-        }
-        finally {
-            this.conn.setAutoCommit(prevAuto);
+        } finally {
+            conn.setAutoCommit(prevAuto);
         }
     }
 
@@ -495,11 +431,12 @@ public class WorkqueueItemDao {
     // ==========================================================
     /** Devuelve el diccionario Key/Value de [Item Data] por Item Id. */
     public Map<String,String> getItemDataById(long itemId) throws SQLException {
-        String sql = "SELECT [Key],[Value] FROM [Item Data] WHERE [Item ID]=? ORDER BY [Id] ASC";
-        LinkedHashMap<String, String> map = new LinkedHashMap<String, String>();
-        try (PreparedStatement ps = this.conn.prepareStatement(sql);){
+        String sql = "SELECT " + COL_D_KEY + "," + COL_D_VALUE + " FROM " + TBL_DATA +
+                " WHERE " + COL_D_ITEM_ID + "=? ORDER BY " + COL_D_ID + " ASC";
+        Map<String,String> map = new LinkedHashMap<>();
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, itemId);
-            try (ResultSet rs = ps.executeQuery();){
+            try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     String k = rs.getString(1);
                     String v = rs.getString(2);
@@ -512,11 +449,13 @@ public class WorkqueueItemDao {
 
     /** Devuelve Key/Value por Item Key (join con workqueue). */
     public Map<String,String> getItemDataByKey(String itemKey) throws SQLException {
-        String sql = "SELECT d.[Key], d.[Value] FROM [Item Data] d INNER JOIN [workqueue] w ON d.[Item ID] = w.[Id] WHERE w.[Key]=? ORDER BY d.[Id] ASC";
-        LinkedHashMap<String, String> map = new LinkedHashMap<String, String>();
-        try (PreparedStatement ps = this.conn.prepareStatement(sql);){
+        String sql = "SELECT d." + COL_D_KEY + ", d." + COL_D_VALUE +
+                " FROM " + TBL_DATA + " d INNER JOIN " + TBL_WQ + " w ON d." + COL_D_ITEM_ID + " = w." + COL_ID +
+                " WHERE w." + COL_KEY + "=? ORDER BY d." + COL_D_ID + " ASC";
+        Map<String,String> map = new LinkedHashMap<>();
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, itemKey);
-            try (ResultSet rs = ps.executeQuery();){
+            try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     String k = rs.getString(1);
                     String v = rs.getString(2);
@@ -532,65 +471,44 @@ public class WorkqueueItemDao {
     //                   UPDATE WORKFLOW (SET STATUS)
     //============================================================
     public WorkItem updateWorkflowById(long id, Long statusWf, String stepWf) throws SQLException {
-        Timestamp now = this.nowTs();
-        boolean prevAuto = this.conn.getAutoCommit();
+        final Timestamp now = nowTs();
+        boolean prevAuto = conn.getAutoCommit();
         try {
-            String sql = "UPDATE [workqueue] SET [Status Workflow]=?, [Step Workflow]=?, [Last Updated]=? WHERE [Id]=? AND [Status]=?";
-            try (PreparedStatement ps = this.conn.prepareStatement(sql);){
-                if (statusWf != null) {
-                    ps.setLong(1, statusWf);
-                } else {
-                    ps.setNull(1, 4);
-                }
-                if (stepWf != null) {
-                    ps.setString(2, stepWf);
-                } else {
-                    ps.setNull(2, 12);
-                }
+            String sql = "UPDATE " + TBL_WQ + " SET " + COL_STATUS_WF + "=?, " + COL_STEP_WF + "=?, " + COL_UPDATED + "=? " +
+                    "WHERE " + COL_ID + "=? AND " + COL_STATUS + "=?"; // sigue tu regla: solo en Working
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                if (statusWf != null) ps.setLong(1, statusWf); else ps.setNull(1, SQL_LONG_TYPE);
+                if (stepWf   != null) ps.setString(2, stepWf);  else ps.setNull(2, Types.VARCHAR);
                 ps.setTimestamp(3, now);
                 ps.setLong(4, id);
                 ps.setString(5, ST_WORKING);
                 int rows = ps.executeUpdate();
-                if (rows == 0) {
-                    throw this.explainNotUpdatableById(id, this.fetchStateById(id), now);
-                }
+                if (rows == 0) throw explainNotUpdatableById(id, fetchStateById(id), now);
             }
-            this.conn.commit();
-            WorkItem workItem = this.buildWorkItemById(id);
-            return workItem;
-        }
-        catch (SQLException ex) {
-            this.conn.rollback();
+            conn.commit();
+            return buildWorkItemById(id);
+        } catch (SQLException ex) {
+            conn.rollback();
             throw ex;
-        }
-        finally {
-            this.conn.setAutoCommit(prevAuto);
+        } finally {
+            conn.setAutoCommit(prevAuto);
         }
     }
 
     public WorkItem updateWorkflowByKey(String key, Long statusWf, String stepWf) throws SQLException {
-        Timestamp now = this.nowTs();
-        String sql = "UPDATE [workqueue] SET [Status Workflow]=?, [Step Workflow]=?, [Last Updated]=? WHERE [Key]=? AND [Status]=?";
-        try (PreparedStatement ps = this.conn.prepareStatement(sql);){
-            if (statusWf != null) {
-                ps.setLong(1, statusWf);
-            } else {
-                ps.setNull(1, 4);
-            }
-            if (stepWf != null) {
-                ps.setString(2, stepWf);
-            } else {
-                ps.setNull(2, 12);
-            }
+        final Timestamp now = nowTs();
+        String sql = "UPDATE " + TBL_WQ + " SET " + COL_STATUS_WF + "=?, " + COL_STEP_WF + "=?, " + COL_UPDATED + "=? " +
+                "WHERE " + COL_KEY + "=? AND " + COL_STATUS + "=?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            if (statusWf != null) ps.setLong(1, statusWf); else ps.setNull(1, SQL_LONG_TYPE);
+            if (stepWf   != null) ps.setString(2, stepWf);  else ps.setNull(2, Types.VARCHAR);
             ps.setTimestamp(3, now);
             ps.setString(4, key);
             ps.setString(5, ST_WORKING);
             int rows = ps.executeUpdate();
-            if (rows == 0) {
-                throw this.explainNotUpdatableByKey(key, this.fetchStateByKey(key), now);
-            }
+            if (rows == 0) throw explainNotUpdatableByKey(key, fetchStateByKey(key), now);
         }
-        return this.buildWorkItemByKey(key);
+        return buildWorkItemByKey(key);
     }
 
 
@@ -604,131 +522,291 @@ public class WorkqueueItemDao {
     //   Reglas: WORKING + no diferido + falla si clave existe
     //
     public WorkItem insertDataFieldsById(long itemId, Map<String,String> dataToInsert) throws SQLException {
-        if (dataToInsert == null || dataToInsert.isEmpty()) {
-            return this.buildWorkItemById(itemId);
-        }
-        Timestamp now = this.nowTs();
-        boolean prevAuto = this.conn.getAutoCommit();
+        if (dataToInsert == null || dataToInsert.isEmpty())
+            return buildWorkItemById(itemId); // nada que hacer
+
+        final Timestamp now = nowTs();
+        boolean prevAuto = conn.getAutoCommit();
         try {
-            this.conn.setAutoCommit(false);
-            ModState st = this.fetchStateById(itemId);
-            if (st == null || !ST_WORKING.equals(st.status) || st.deferUntil != null && st.deferUntil.after(now)) {
-                throw this.explainNotUpdatableById(itemId, st, now);
+            conn.setAutoCommit(false);
+
+            // Validación de estado
+            ModState st = fetchStateById(itemId);
+            if (st == null || !ST_WORKING.equals(st.status) || (st.deferUntil != null && st.deferUntil.after(now))) {
+                throw explainNotUpdatableById(itemId, st, now);
             }
-            String existsSql = "SELECT [Key] FROM [Item Data] WHERE [Item ID]=?";
-            try (PreparedStatement ps = this.conn.prepareStatement(existsSql);){
+
+            // Duplicados en BD
+            String existsSql = "SELECT " + COL_D_KEY + " FROM " + TBL_DATA + " WHERE " + COL_D_ITEM_ID + "=?";
+            try (PreparedStatement ps = conn.prepareStatement(existsSql)) {
                 ps.setLong(1, itemId);
-                try (ResultSet rs = ps.executeQuery();){
-                    HashSet<String> existing = new HashSet<String>();
-                    while (rs.next()) {
-                        existing.add(rs.getString(1));
-                    }
+                try (ResultSet rs = ps.executeQuery()) {
+                    java.util.HashSet<String> existing = new java.util.HashSet<>();
+                    while (rs.next()) existing.add(rs.getString(1));
                     for (String k : dataToInsert.keySet()) {
-                        if (!existing.contains(k)) continue;
-                        throw new SQLException("El campo '" + k + "' ya existe para el ítem Id=" + itemId + ".");
+                        if (existing.contains(k)) {
+                            throw new SQLException("El campo '" + k + "' ya existe para el ítem Id=" + itemId + ".");
+                        }
                     }
                 }
             }
-            String ins = "INSERT INTO [Item Data] ([Item ID],[Key],[Value]) VALUES (?,?,?)";
-            try (PreparedStatement ps = this.conn.prepareStatement(ins);){
-                for (Map.Entry entry : dataToInsert.entrySet()) {
+
+            // Insert masivo (uno a uno, misma transacción)
+            String ins = "INSERT INTO " + TBL_DATA + " (" + COL_D_ITEM_ID + "," + COL_D_KEY + "," + COL_D_VALUE + ") VALUES (?,?,?)";
+            try (PreparedStatement ps = conn.prepareStatement(ins)) {
+                for (Map.Entry<String,String> e : dataToInsert.entrySet()) {
                     ps.setLong(1, itemId);
-                    ps.setString(2, (String)entry.getKey());
-                    ps.setString(3, (String)entry.getValue());
+                    ps.setString(2, e.getKey());
+                    ps.setString(3, e.getValue());
                     ps.addBatch();
                 }
                 ps.executeBatch();
             }
-            String upd = "UPDATE [workqueue] SET [Last Updated]=? WHERE [Id]=?";
-            try (PreparedStatement ps = this.conn.prepareStatement(upd);){
+
+            // Actualizar [Last Updated] una sola vez
+            String upd = "UPDATE " + TBL_WQ + " SET " + COL_UPDATED + "=? WHERE " + COL_ID + "=?";
+            try (PreparedStatement ps = conn.prepareStatement(upd)) {
                 ps.setTimestamp(1, now);
                 ps.setLong(2, itemId);
                 ps.executeUpdate();
             }
-            this.conn.commit();
-            WorkItem workItem = this.buildWorkItemById(itemId);
-            return workItem;
-        }
-        catch (SQLException ex) {
-            this.conn.rollback();
+
+            conn.commit();
+            return buildWorkItemById(itemId);
+        } catch (SQLException ex) {
+            conn.rollback();
             throw ex;
-        }
-        finally {
-            this.conn.setAutoCommit(prevAuto);
+        } finally {
+            conn.setAutoCommit(prevAuto);
         }
     }
 
     public WorkItem insertDataFieldsByKey(String itemKey, Map<String,String> dataToInsert) throws SQLException {
-        if (itemKey == null || itemKey.isBlank()) {
+        if (itemKey == null || itemKey.isBlank())
             throw new SQLException("Item Key es obligatorio.");
-        }
-        if (dataToInsert == null || dataToInsert.isEmpty()) {
-            return this.buildWorkItemByKey(itemKey);
-        }
-        Timestamp now = this.nowTs();
-        boolean prevAuto = this.conn.getAutoCommit();
+        if (dataToInsert == null || dataToInsert.isEmpty())
+            return buildWorkItemByKey(itemKey); // nada que hacer
+
+        final Timestamp now = nowTs();
+        boolean prevAuto = conn.getAutoCommit();
         try {
-            boolean deferred;
-            this.conn.setAutoCommit(false);
-            Long id = null;
-            String status = null;
-            Timestamp deferUntil = null;
-            String sel = "SELECT [Id],[Status],[Defer Until] FROM [workqueue] WHERE [Key]=?";
-            try (PreparedStatement ps = this.conn.prepareStatement(sel);){
+            conn.setAutoCommit(false);
+
+            // Traer Id + estado + deferUntil
+            Long id = null; String status = null; Timestamp deferUntil = null;
+            String sel = "SELECT " + COL_ID + "," + COL_STATUS + "," + COL_DEFER_UNTIL + " FROM " + TBL_WQ + " WHERE " + COL_KEY + "=?";
+            try (PreparedStatement ps = conn.prepareStatement(sel)) {
                 ps.setString(1, itemKey);
-                try (ResultSet rs = ps.executeQuery();){
-                    if (!rs.next()) {
-                        throw new SQLException("Item no encontrado (Key): " + itemKey);
-                    }
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (!rs.next()) throw new SQLException("Item no encontrado (Key): " + itemKey);
                     id = rs.getLong(1);
                     status = rs.getString(2);
                     deferUntil = rs.getTimestamp(3);
                 }
             }
-            boolean bl = deferred = deferUntil != null && deferUntil.after(now);
+
+            boolean deferred = (deferUntil != null && deferUntil.after(now));
             if (!ST_WORKING.equals(status) || deferred) {
-                throw this.explainNotUpdatableByKey(itemKey, new ModState(status, deferUntil), now);
+                throw explainNotUpdatableByKey(itemKey, new ModState(status, deferUntil), now);
             }
-            String existsSql = "SELECT [Key] FROM [Item Data] WHERE [Item ID]=?";
-            try (PreparedStatement ps = this.conn.prepareStatement(existsSql);){
+
+            // Duplicados en BD
+            String existsSql = "SELECT " + COL_D_KEY + " FROM " + TBL_DATA + " WHERE " + COL_D_ITEM_ID + "=?";
+            try (PreparedStatement ps = conn.prepareStatement(existsSql)) {
                 ps.setLong(1, id);
-                try (ResultSet rs = ps.executeQuery();){
-                    HashSet<String> existing = new HashSet<String>();
-                    while (rs.next()) {
-                        existing.add(rs.getString(1));
-                    }
+                try (ResultSet rs = ps.executeQuery()) {
+                    java.util.HashSet<String> existing = new java.util.HashSet<>();
+                    while (rs.next()) existing.add(rs.getString(1));
                     for (String k : dataToInsert.keySet()) {
-                        if (!existing.contains(k)) continue;
-                        throw new SQLException("El campo '" + k + "' ya existe para el ítem Key='" + itemKey + "'.");
+                        if (existing.contains(k)) {
+                            throw new SQLException("El campo '" + k + "' ya existe para el ítem Key='" + itemKey + "'.");
+                        }
                     }
                 }
             }
-            String ins = "INSERT INTO [Item Data] ([Item ID],[Key],[Value]) VALUES (?,?,?)";
-            try (PreparedStatement ps = this.conn.prepareStatement(ins);){
-                for (Map.Entry entry : dataToInsert.entrySet()) {
+
+            // Insert masivo
+            String ins = "INSERT INTO " + TBL_DATA + " (" + COL_D_ITEM_ID + "," + COL_D_KEY + "," + COL_D_VALUE + ") VALUES (?,?,?)";
+            try (PreparedStatement ps = conn.prepareStatement(ins)) {
+                for (Map.Entry<String,String> e : dataToInsert.entrySet()) {
                     ps.setLong(1, id);
-                    ps.setString(2, (String)entry.getKey());
-                    ps.setString(3, (String)entry.getValue());
+                    ps.setString(2, e.getKey());
+                    ps.setString(3, e.getValue());
                     ps.addBatch();
                 }
                 ps.executeBatch();
             }
-            String upd = "UPDATE [workqueue] SET [Last Updated]=? WHERE [Id]=?";
-            try (PreparedStatement ps = this.conn.prepareStatement(upd);){
+
+            // Actualizar [Last Updated]
+            String upd = "UPDATE " + TBL_WQ + " SET " + COL_UPDATED + "=? WHERE " + COL_ID + "=?";
+            try (PreparedStatement ps = conn.prepareStatement(upd)) {
                 ps.setTimestamp(1, now);
                 ps.setLong(2, id);
                 ps.executeUpdate();
             }
-            this.conn.commit();
-            WorkItem workItem = this.buildWorkItemByKey(itemKey);
-            return workItem;
-        }
-        catch (SQLException ex) {
-            this.conn.rollback();
+
+            conn.commit();
+            return buildWorkItemByKey(itemKey);
+        } catch (SQLException ex) {
+            conn.rollback();
             throw ex;
+        } finally {
+            conn.setAutoCommit(prevAuto);
         }
-        finally {
-            this.conn.setAutoCommit(prevAuto);
+    }
+
+    // --- Actualizaciones e inserciones en bloque de Item Data ---
+    //   Reglas: WORKING + no diferido + actualiza si la clave existe
+    //
+    public WorkItem upsertDataFieldsById(long itemId, Map<String,String> data) throws SQLException {
+        if (data == null || data.isEmpty())
+            return buildWorkItemById(itemId); // nada que hacer
+
+        final Timestamp now = nowTs();
+        boolean prevAuto = conn.getAutoCommit();
+        try {
+            conn.setAutoCommit(false);
+
+            // Validación de estado
+            ModState st = fetchStateById(itemId);
+            if (st == null || !ST_WORKING.equals(st.status) || (st.deferUntil != null && st.deferUntil.after(now))) {
+                throw explainNotUpdatableById(itemId, st, now);
+            }
+
+            // Claves que ya existen en BD
+            java.util.HashSet<String> existing = new java.util.HashSet<>();
+            String existsSql = "SELECT " + COL_D_KEY + " FROM " + TBL_DATA + " WHERE " + COL_D_ITEM_ID + "=?";
+            try (PreparedStatement ps = conn.prepareStatement(existsSql)) {
+                ps.setLong(1, itemId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) existing.add(rs.getString(1));
+                }
+            }
+
+            // Actualizar los campos existentes
+            String updData = "UPDATE " + TBL_DATA + " SET " + COL_D_VALUE + "=? WHERE " + COL_D_ITEM_ID + "=? AND " + COL_D_KEY + "=?";
+            try (PreparedStatement ps = conn.prepareStatement(updData)) {
+                for (Map.Entry<String,String> e : data.entrySet()) {
+                    if (!existing.contains(e.getKey())) continue;
+                    ps.setString(1, e.getValue());
+                    ps.setLong(2, itemId);
+                    ps.setString(3, e.getKey());
+                    ps.addBatch();
+                }
+                ps.executeBatch();
+            }
+
+            // Insertar los campos nuevos en la misma transacción
+            String ins = "INSERT INTO " + TBL_DATA + " (" + COL_D_ITEM_ID + "," + COL_D_KEY + "," + COL_D_VALUE + ") VALUES (?,?,?)";
+            try (PreparedStatement ps = conn.prepareStatement(ins)) {
+                for (Map.Entry<String,String> e : data.entrySet()) {
+                    if (existing.contains(e.getKey())) continue;
+                    ps.setLong(1, itemId);
+                    ps.setString(2, e.getKey());
+                    ps.setString(3, e.getValue());
+                    ps.addBatch();
+                }
+                ps.executeBatch();
+            }
+
+            // Actualizar [Last Updated] una sola vez
+            String upd = "UPDATE " + TBL_WQ + " SET " + COL_UPDATED + "=? WHERE " + COL_ID + "=?";
+            try (PreparedStatement ps = conn.prepareStatement(upd)) {
+                ps.setTimestamp(1, now);
+                ps.setLong(2, itemId);
+                ps.executeUpdate();
+            }
+
+            conn.commit();
+            return buildWorkItemById(itemId);
+        } catch (SQLException ex) {
+            conn.rollback();
+            throw ex;
+        } finally {
+            conn.setAutoCommit(prevAuto);
+        }
+    }
+
+    public WorkItem upsertDataFieldsByKey(String itemKey, Map<String,String> data) throws SQLException {
+        if (itemKey == null || itemKey.isBlank())
+            throw new SQLException("Item Key es obligatorio.");
+        if (data == null || data.isEmpty())
+            return buildWorkItemByKey(itemKey); // nada que hacer
+
+        final Timestamp now = nowTs();
+        boolean prevAuto = conn.getAutoCommit();
+        try {
+            conn.setAutoCommit(false);
+
+            // Traer Id + estado + deferUntil
+            Long id = null; String status = null; Timestamp deferUntil = null;
+            String sel = "SELECT " + COL_ID + "," + COL_STATUS + "," + COL_DEFER_UNTIL + " FROM " + TBL_WQ + " WHERE " + COL_KEY + "=?";
+            try (PreparedStatement ps = conn.prepareStatement(sel)) {
+                ps.setString(1, itemKey);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (!rs.next()) throw new SQLException("Item no encontrado (Key): " + itemKey);
+                    id = rs.getLong(1);
+                    status = rs.getString(2);
+                    deferUntil = rs.getTimestamp(3);
+                }
+            }
+
+            boolean deferred = (deferUntil != null && deferUntil.after(now));
+            if (!ST_WORKING.equals(status) || deferred) {
+                throw explainNotUpdatableByKey(itemKey, new ModState(status, deferUntil), now);
+            }
+
+            // Claves que ya existen en BD
+            java.util.HashSet<String> existing = new java.util.HashSet<>();
+            String existsSql = "SELECT " + COL_D_KEY + " FROM " + TBL_DATA + " WHERE " + COL_D_ITEM_ID + "=?";
+            try (PreparedStatement ps = conn.prepareStatement(existsSql)) {
+                ps.setLong(1, id);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) existing.add(rs.getString(1));
+                }
+            }
+
+            // Actualizar los campos existentes
+            String updData = "UPDATE " + TBL_DATA + " SET " + COL_D_VALUE + "=? WHERE " + COL_D_ITEM_ID + "=? AND " + COL_D_KEY + "=?";
+            try (PreparedStatement ps = conn.prepareStatement(updData)) {
+                for (Map.Entry<String,String> e : data.entrySet()) {
+                    if (!existing.contains(e.getKey())) continue;
+                    ps.setString(1, e.getValue());
+                    ps.setLong(2, id);
+                    ps.setString(3, e.getKey());
+                    ps.addBatch();
+                }
+                ps.executeBatch();
+            }
+
+            // Insertar los campos nuevos
+            String ins = "INSERT INTO " + TBL_DATA + " (" + COL_D_ITEM_ID + "," + COL_D_KEY + "," + COL_D_VALUE + ") VALUES (?,?,?)";
+            try (PreparedStatement ps = conn.prepareStatement(ins)) {
+                for (Map.Entry<String,String> e : data.entrySet()) {
+                    if (existing.contains(e.getKey())) continue;
+                    ps.setLong(1, id);
+                    ps.setString(2, e.getKey());
+                    ps.setString(3, e.getValue());
+                    ps.addBatch();
+                }
+                ps.executeBatch();
+            }
+
+            // Actualizar [Last Updated]
+            String upd = "UPDATE " + TBL_WQ + " SET " + COL_UPDATED + "=? WHERE " + COL_ID + "=?";
+            try (PreparedStatement ps = conn.prepareStatement(upd)) {
+                ps.setTimestamp(1, now);
+                ps.setLong(2, id);
+                ps.executeUpdate();
+            }
+
+            conn.commit();
+            return buildWorkItemByKey(itemKey);
+        } catch (SQLException ex) {
+            conn.rollback();
+            throw ex;
+        } finally {
+            conn.setAutoCommit(prevAuto);
         }
     }
 
@@ -754,34 +832,38 @@ public class WorkqueueItemDao {
      * - luego borra de [workqueue].
      */
     public DeletedStats purgeOldItemsByCreatedDate(Timestamp cutoff) throws SQLException {
-        if (cutoff == null) {
-            throw new SQLException("La fecha de corte es obligatoria.");
-        }
-        boolean prevAuto = this.conn.getAutoCommit();
+        if (cutoff == null) throw new SQLException("La fecha de corte es obligatoria.");
+
+        boolean prevAuto = conn.getAutoCommit();
         try {
-            int itemsDeleted;
+            conn.setAutoCommit(false);
+
+            // 1) Borrar Item Data relacionado a los ítems a purgar
+            String delData = "DELETE d.* FROM " + TBL_DATA + " AS d "
+                    + "INNER JOIN " + TBL_WQ + " AS w ON d." + COL_D_ITEM_ID + " = w." + COL_ID + " "
+                    + "WHERE w." + COL_CREATED + " < ?";
             int dataRowsDeleted;
-            this.conn.setAutoCommit(false);
-            String delData = "DELETE d.* FROM [Item Data] AS d INNER JOIN [workqueue] AS w ON d.[Item ID] = w.[Id] WHERE w.[Created Date] < ?";
-            try (PreparedStatement ps = this.conn.prepareStatement(delData);){
+            try (PreparedStatement ps = conn.prepareStatement(delData)) {
                 ps.setTimestamp(1, cutoff);
                 dataRowsDeleted = ps.executeUpdate();
             }
-            String delItems = "DELETE FROM [workqueue] WHERE [Created Date] < ?";
-            try (PreparedStatement ps = this.conn.prepareStatement(delItems);){
+
+            // 2) Borrar ítems en workqueue
+            String delItems = "DELETE FROM " + TBL_WQ + " WHERE " + COL_CREATED + " < ?";
+            int itemsDeleted;
+            try (PreparedStatement ps = conn.prepareStatement(delItems)) {
                 ps.setTimestamp(1, cutoff);
                 itemsDeleted = ps.executeUpdate();
             }
-            this.conn.commit();
-            DeletedStats deletedStats = new DeletedStats(itemsDeleted, dataRowsDeleted, cutoff);
-            return deletedStats;
-        }
-        catch (SQLException ex) {
-            this.conn.rollback();
+
+            conn.commit();
+            return new DeletedStats(itemsDeleted, dataRowsDeleted, cutoff);
+
+        } catch (SQLException ex) {
+            conn.rollback();
             throw ex;
-        }
-        finally {
-            this.conn.setAutoCommit(prevAuto);
+        } finally {
+            conn.setAutoCommit(prevAuto);
         }
     }
 
@@ -795,292 +877,55 @@ public class WorkqueueItemDao {
     // --- Lecturas públicas, reusando builders privados ---
     //
     public WorkItem readWorkItemById(long id) throws SQLException {
-        return this.buildWorkItemById(id);
+        return buildWorkItemById(id);
     }
 
     public WorkItem readWorkItemByKey(String key) throws SQLException {
-        return this.buildWorkItemByKey(key);
+        return buildWorkItemByKey(key);
     }
 
     // Carga WorkItem por ID (sin exponer [Status])
     private WorkItem buildWorkItemById(long id) throws SQLException {
-        String sql = "SELECT [Key],[Status Workflow],[Step Workflow] FROM [workqueue] WHERE [Id]=?";
-        try (PreparedStatement ps = this.conn.prepareStatement(sql);){
-            WorkItem workItem;
-            block16: {
-                ResultSet rs;
-                block14: {
-                    WorkItem workItem2;
-                    block15: {
-                        ps.setLong(1, id);
-                        rs = ps.executeQuery();
-                        try {
-                            if (rs.next()) break block14;
-                            workItem2 = null;
-                            if (rs == null) break block15;
-                        }
-                        catch (Throwable throwable) {
-                            if (rs != null) {
-                                try {
-                                    rs.close();
-                                }
-                                catch (Throwable throwable2) {
-                                    throwable.addSuppressed(throwable2);
-                                }
-                            }
-                            throw throwable;
-                        }
-                        rs.close();
-                    }
-                    return workItem2;
-                }
+        String sql = "SELECT " + COL_KEY + "," + COL_STATUS_WF + "," + COL_STEP_WF +
+                " FROM " + TBL_WQ + " WHERE " + COL_ID + "=?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, id);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) return null;
+
                 String key = rs.getString(1);
+
                 long wf = rs.getLong(2);
-                Long statusWf = rs.wasNull() ? null : Long.valueOf(wf);
+                Long statusWf = rs.wasNull() ? null : wf; // <-- manejo de null
+
                 String stepWf = rs.getString(3);
-                Map<String, String> data = this.getItemDataById(id);
-                workItem = new WorkItem(id, key, statusWf, stepWf, data);
-                if (rs == null) break block16;
-                rs.close();
+
+                Map<String,String> data = getItemDataById(id);
+                return new WorkItem(id, key, statusWf, stepWf, data);
             }
-            return workItem;
         }
     }
 
     private WorkItem buildWorkItemByKey(String key) throws SQLException {
-        String sql = "SELECT [Id],[Status Workflow],[Step Workflow] FROM [workqueue] WHERE [Key]=?";
-        try (PreparedStatement ps = this.conn.prepareStatement(sql);){
-            WorkItem workItem;
-            block16: {
-                ResultSet rs;
-                block14: {
-                    WorkItem workItem2;
-                    block15: {
-                        ps.setString(1, key);
-                        rs = ps.executeQuery();
-                        try {
-                            if (rs.next()) break block14;
-                            workItem2 = null;
-                            if (rs == null) break block15;
-                        }
-                        catch (Throwable throwable) {
-                            if (rs != null) {
-                                try {
-                                    rs.close();
-                                }
-                                catch (Throwable throwable2) {
-                                    throwable.addSuppressed(throwable2);
-                                }
-                            }
-                            throw throwable;
-                        }
-                        rs.close();
-                    }
-                    return workItem2;
-                }
+        String sql = "SELECT " + COL_ID + "," + COL_STATUS_WF + "," + COL_STEP_WF +
+                " FROM " + TBL_WQ + " WHERE " + COL_KEY + "=?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, key);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) return null;
+
                 long id = rs.getLong(1);
+
                 long wf = rs.getLong(2);
-                Long statusWf = rs.wasNull() ? null : Long.valueOf(wf);
+                Long statusWf = rs.wasNull() ? null : wf; // <-- manejo de null
+
                 String stepWf = rs.getString(3);
-                Map<String, String> data = this.getItemDataById(id);
-                workItem = new WorkItem(id, key, statusWf, stepWf, data);
-                if (rs == null) break block16;
-                rs.close();
+
+                Map<String,String> data = getItemDataById(id);
+                return new WorkItem(id, key, statusWf, stepWf, data);
             }
-            return workItem;
         }
     }
 
 
-
-    public WorkItem getLastItem() throws SQLException {
-        boolean prevAuto = this.conn.getAutoCommit();
-        try {
-            String stepWf;
-            Long statusWf;
-            String key;
-            Long id;
-            block20: {
-                id = null;
-                key = null;
-                statusWf = null;
-                stepWf = null;
-                String sel = "SELECT TOP 1 [Id],[Key],[Status Workflow],[Step Workflow] FROM [workqueue] ORDER BY [Created Date] DESC, [Id] DESC";
-                try (PreparedStatement ps = this.conn.prepareStatement(sel);
-                     ResultSet rs = ps.executeQuery();){
-                    if (rs.next()) {
-                        id = rs.getLong(1);
-                        key = rs.getString(2);
-                        statusWf = rs.getLong(3);
-                        stepWf = rs.getString(4);
-                        break block20;
-                    }
-                    this.conn.commit();
-                    WorkItem workItem = null;
-                    return workItem;
-                }
-            }
-            this.conn.commit();
-            Map<String, String> data = this.getItemDataById(id);
-            WorkItem workItem = new WorkItem(id, key, statusWf, stepWf, data);
-            return workItem;
-        }
-        catch (SQLException ex) {
-            this.conn.rollback();
-            throw ex;
-        }
-        finally {
-            this.conn.setAutoCommit(prevAuto);
-        }
-    }
-
-    public WorkItem upsertDataFieldsById(long itemId, Map<String, String> data) throws SQLException {
-        if (data == null || data.isEmpty()) {
-            return this.buildWorkItemById(itemId);
-        }
-        Timestamp now = this.nowTs();
-        boolean prevAuto = this.conn.getAutoCommit();
-        try {
-            this.conn.setAutoCommit(false);
-            ModState st = this.fetchStateById(itemId);
-            if (st == null || !ST_WORKING.equals(st.status) || st.deferUntil != null && st.deferUntil.after(now)) {
-                throw this.explainNotUpdatableById(itemId, st, now);
-            }
-            HashSet<String> existing = new HashSet<String>();
-            String sel = "SELECT [Key] FROM [Item Data] WHERE [Item ID]=?";
-            try (PreparedStatement ps = this.conn.prepareStatement(sel);){
-                ps.setLong(1, itemId);
-                try (ResultSet rs = ps.executeQuery();){
-                    while (rs.next()) {
-                        existing.add(rs.getString(1));
-                    }
-                }
-            }
-            String upd = "UPDATE [Item Data] SET [Value]=? WHERE [Item ID]=? AND [Key]=?";
-            try (PreparedStatement ps = this.conn.prepareStatement(upd);){
-                for (Map.Entry<String, String> e : data.entrySet()) {
-                    if (!existing.contains(e.getKey())) continue;
-                    ps.setString(1, e.getValue());
-                    ps.setLong(2, itemId);
-                    ps.setString(3, e.getKey());
-                    ps.addBatch();
-                }
-                ps.executeBatch();
-            }
-            String ins = "INSERT INTO [Item Data] ([Item ID],[Key],[Value]) VALUES (?,?,?)";
-            try (PreparedStatement ps = this.conn.prepareStatement(ins);){
-                for (Map.Entry<String, String> e : data.entrySet()) {
-                    if (existing.contains(e.getKey())) continue;
-                    ps.setLong(1, itemId);
-                    ps.setString(2, e.getKey());
-                    ps.setString(3, e.getValue());
-                    ps.addBatch();
-                }
-                ps.executeBatch();
-            }
-            PreparedStatement ps = this.conn.prepareStatement("UPDATE [workqueue] SET [Last Updated]=? WHERE [Id]=?");
-            try {
-                ps.setTimestamp(1, now);
-                ps.setLong(2, itemId);
-                ps.executeUpdate();
-            }
-            finally {
-                if (ps != null) {
-                    ps.close();
-                }
-            }
-            this.conn.commit();
-            WorkItem workItem = this.buildWorkItemById(itemId);
-            return workItem;
-        }
-        catch (SQLException ex) {
-            this.conn.rollback();
-            throw ex;
-        }
-        finally {
-            this.conn.setAutoCommit(prevAuto);
-        }
-    }
-
-    public WorkItem upsertDataFieldsByKey(String itemKey, Map<String, String> data) throws SQLException {
-        if (itemKey == null || itemKey.isBlank()) {
-            throw new SQLException("Item Key es obligatorio.");
-        }
-        if (data == null || data.isEmpty()) {
-            return this.buildWorkItemByKey(itemKey);
-        }
-        Timestamp now = this.nowTs();
-        boolean prevAuto = this.conn.getAutoCommit();
-        try {
-            boolean deferred;
-            this.conn.setAutoCommit(false);
-            Long itemId = null;
-            String status = null;
-            Timestamp deferUntil = null;
-            String selItem = "SELECT [Id],[Status],[Defer Until] FROM [workqueue] WHERE [Key]=?";
-            try (PreparedStatement ps = this.conn.prepareStatement(selItem);){
-                ps.setString(1, itemKey);
-                try (ResultSet rs = ps.executeQuery();){
-                    if (!rs.next()) {
-                        throw new SQLException("Item no encontrado (Key): " + itemKey);
-                    }
-                    itemId = rs.getLong(1);
-                    status = rs.getString(2);
-                    deferUntil = rs.getTimestamp(3);
-                }
-            }
-            boolean bl = deferred = deferUntil != null && deferUntil.after(now);
-            if (!ST_WORKING.equals(status) || deferred) {
-                throw this.explainNotUpdatableByKey(itemKey, new ModState(status, deferUntil), now);
-            }
-            HashSet<String> existing = new HashSet<String>();
-            String selKeys = "SELECT [Key] FROM [Item Data] WHERE [Item ID]=?";
-            try (PreparedStatement ps = this.conn.prepareStatement(selKeys);){
-                ps.setLong(1, itemId);
-                try (ResultSet rs = ps.executeQuery();){
-                    while (rs.next()) {
-                        existing.add(rs.getString(1));
-                    }
-                }
-            }
-            String upd = "UPDATE [Item Data] SET [Value]=? WHERE [Item ID]=? AND [Key]=?";
-            try (PreparedStatement ps = this.conn.prepareStatement(upd);){
-                for (Map.Entry<String, String> e : data.entrySet()) {
-                    if (!existing.contains(e.getKey())) continue;
-                    ps.setString(1, e.getValue());
-                    ps.setLong(2, itemId);
-                    ps.setString(3, (String)e.getKey());
-                    ps.addBatch();
-                }
-                ps.executeBatch();
-            }
-            String ins = "INSERT INTO [Item Data] ([Item ID],[Key],[Value]) VALUES (?,?,?)";
-            try (PreparedStatement ps = this.conn.prepareStatement(ins);){
-                for (Map.Entry entry : data.entrySet()) {
-                    if (existing.contains(entry.getKey())) continue;
-                    ps.setLong(1, itemId);
-                    ps.setString(2, (String)entry.getKey());
-                    ps.setString(3, (String)entry.getValue());
-                    ps.addBatch();
-                }
-                ps.executeBatch();
-            }
-            String updWq = "UPDATE [workqueue] SET [Last Updated]=? WHERE [Id]=?";
-            try (PreparedStatement ps = this.conn.prepareStatement(updWq);){
-                ps.setTimestamp(1, now);
-                ps.setLong(2, itemId);
-                ps.executeUpdate();
-            }
-            this.conn.commit();
-            WorkItem workItem = this.buildWorkItemByKey(itemKey);
-            return workItem;
-        }
-        catch (SQLException ex) {
-            this.conn.rollback();
-            throw ex;
-        }
-        finally {
-            this.conn.setAutoCommit(prevAuto);
-        }
-    }
 }

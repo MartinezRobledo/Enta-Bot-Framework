@@ -1,16 +1,21 @@
 package com.automationanywhere.botcommand.actions.workqueues;
 
-import java.sql.Connection;
-
+import com.automationanywhere.botcommand.data.Value;
+import com.automationanywhere.botcommand.data.impl.DictionaryValue;
+import com.automationanywhere.botcommand.data.impl.NumberValue;
+import com.automationanywhere.botcommand.data.impl.StringValue;
 import com.automationanywhere.botcommand.exception.BotCommandException;
 import com.automationanywhere.botcommand.utilities.workqueue.AccessExecutor;
 import com.automationanywhere.botcommand.utilities.workqueue.WorkqueueItemDao;
 import com.automationanywhere.commandsdk.annotations.*;
 import com.automationanywhere.commandsdk.annotations.rules.NotEmpty;
 import com.automationanywhere.commandsdk.model.AttributeType;
+import com.automationanywhere.commandsdk.model.DataType;
 
 import java.sql.Timestamp;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
 @BotCommand
 @CommandPkg(
@@ -34,16 +39,15 @@ public class MaintainQueue {
             Date cutoffDate
     ) {
         try {
-            if (cutoffDate == null) {
-                throw new BotCommandException("La fecha umbral es obligatoria.");
-            }
-            Timestamp cutoff = new Timestamp(cutoffDate.getTime());
+            if (cutoffDate == null) throw new BotCommandException("La fecha umbral es obligatoria.");
+            final Timestamp cutoff = new Timestamp(cutoffDate.getTime());
+
             AccessExecutor.executeVoidWithConnection(filePath, conn -> {
-                WorkqueueItemDao dao = new WorkqueueItemDao((Connection)conn);
+                WorkqueueItemDao dao = new WorkqueueItemDao(conn);
                 WorkqueueItemDao.DeletedStats stats = dao.purgeOldItemsByCreatedDate(cutoff);
             });
-        }
-        catch (Exception e) {
+
+        } catch (Exception e) {
             throw new BotCommandException("Maintain Queue falló: " + e.getMessage(), e);
         }
     }

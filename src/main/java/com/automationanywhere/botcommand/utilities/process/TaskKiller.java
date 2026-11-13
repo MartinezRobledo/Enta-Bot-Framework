@@ -1,7 +1,5 @@
 package com.automationanywhere.botcommand.utilities.process;
 
-import org.apache.commons.io.FilenameUtils;
-
 import com.automationanywhere.botcommand.exception.BotCommandException;
 import org.apache.commons.io.FilenameUtils;
 
@@ -14,7 +12,7 @@ public class TaskKiller {
     public static void killProcesses(List<String> processNames, boolean forceKill) {
         try {
             for (String processName : processNames) {
-                Optional<ProcessHandle> processHandleOptional = TaskKiller.findByExactCommand(processName);
+                Optional<ProcessHandle> processHandleOptional = findByExactCommand(processName);
                 processHandleOptional.ifPresent(processHandle -> {
                     try {
                         if (forceKill) {
@@ -23,23 +21,26 @@ public class TaskKiller {
                             processHandle.destroy();
                         }
                         processHandle.onExit().get();
-                    }
-                    catch (Exception ex) {
+                    } catch (Exception ex) {
                         System.out.println(ex.getMessage());
+                        // Move to the next process kill
                     }
                 });
             }
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             throw new BotCommandException("Error killing processes: " + e.getMessage());
         }
     }
 
     private static Optional<ProcessHandle> findByExactCommand(String processName) {
         String baseProcessName = FilenameUtils.getBaseName(processName);
-        return ProcessHandle.allProcesses().filter(process -> {
-            Optional<String> cmd = process.info().command();
-            return cmd.isPresent() && FilenameUtils.getBaseName(cmd.get()).equalsIgnoreCase(baseProcessName);
-        }).findFirst();
+        return ProcessHandle.allProcesses()
+                .filter(process -> {
+                    Optional<String> cmd = process.info().command();
+                    return cmd.isPresent() &&
+                            FilenameUtils.getBaseName(cmd.get())
+                                    .equalsIgnoreCase(baseProcessName);
+                })
+                .findFirst();
     }
 }

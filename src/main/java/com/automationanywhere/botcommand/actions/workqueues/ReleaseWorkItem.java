@@ -1,7 +1,5 @@
 package com.automationanywhere.botcommand.actions.workqueues;
 
-import java.sql.Connection;
-
 import com.automationanywhere.botcommand.utilities.workqueue.AccessExecutor;
 import com.automationanywhere.botcommand.utilities.workqueue.WorkqueueItemDao;
 import com.automationanywhere.commandsdk.annotations.*;
@@ -42,7 +40,7 @@ public class ReleaseWorkItem {
             @Pkg(label = "Item Key") String itemKey
     ) {
         AccessExecutor.executeWithConnection(filePath, conn -> {
-            WorkqueueItemDao dao = new WorkqueueItemDao((Connection)conn);
+            WorkqueueItemDao dao = new WorkqueueItemDao(conn);
             if ("id".equalsIgnoreCase(identifyBy)) {
                 dao.releaseFromWorkingById(itemId.longValue());
             } else {

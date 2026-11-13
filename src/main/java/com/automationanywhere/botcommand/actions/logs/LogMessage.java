@@ -2,6 +2,7 @@ package com.automationanywhere.botcommand.actions.logs;
 
 import com.automationanywhere.botcommand.data.Value;
 import com.automationanywhere.botcommand.exception.BotCommandException;
+import com.automationanywhere.botcommand.utilities.logger.CustomHTMLLayout;
 import com.automationanywhere.botcommand.utilities.logger.CustomLogger;
 import com.automationanywhere.botcommand.utilities.logger.DataConversion;
 import com.automationanywhere.botcommand.utilities.screen.CaptureScreen;
@@ -134,43 +135,51 @@ public class LogMessage {
         try {
             Map<String, Value> variableValues = null;
             String screenshotPath = "";
-            Level log4jLevel = this.convertToLog4jLevel(logLevel);
+
+            // Convert string log level to Log4j Level
+            Level log4jLevel = convertToLog4jLevel(logLevel);
+
             if (logVariable.equalsIgnoreCase(LOG_VARIABLE)) {
-                variableValues = sourceMap != null && !sourceMap.isEmpty() ? DataConversion.getMergedDictionary(list, sourceMap) : DataConversion.getMergedDictionary(list);
+                if (sourceMap != null && !sourceMap.isEmpty()) {
+                    variableValues = DataConversion.getMergedDictionary(list, sourceMap);
+                } else {
+                    variableValues = DataConversion.getMergedDictionary(list);
+                }
             }
-            if (captureScreenshot.booleanValue()) {
+
+            if (captureScreenshot) {
+                // Get appropriate screenshot folder based on log level
                 String screenshotFolder = session.getScreenshotFolderPath(log4jLevel);
-                screenshotPath = LogMessage.generateRandomScreenshotPath(screenshotFolder, logLevel);
+                screenshotPath = generateRandomScreenshotPath(screenshotFolder, logLevel);
                 CaptureScreen.captureDesktop(screenshotPath, true);
             }
-            HashMap<String, Object> message = new HashMap<String, Object>();
-            message.put("Message", logMessage);
-            message.put("Screenshot", screenshotPath);
-            message.put("Variables", variableValues);
-            message.put("Source", this.getFormattedBotUri());
+
+            Map<String, Object> message = new HashMap<>();
+            message.put(CustomHTMLLayout.Columns.MESSAGE, logMessage);
+            message.put(CustomHTMLLayout.Columns.SCREENSHOT, screenshotPath);
+            message.put(CustomHTMLLayout.Columns.VARIABLES, variableValues);
+            message.put(CustomHTMLLayout.Columns.SOURCE, getFormattedBotUri());
+
+            // Add variables folder path if variables are being logged
             if (variableValues != null && !variableValues.isEmpty()) {
-                message.put("variablesFolderPath", session.getVariablesFolderPath(log4jLevel));
+                message.put(CustomHTMLLayout.Columns.VARIABLES_FOLDER_PATH, session.getVariablesFolderPath(log4jLevel));
             }
+
             Logger logger = session.getLogger();
             switch (logLevel) {
-                case "INFO": {
+                case LEVEL_INFO:
                     logger.info(message);
                     break;
-                }
-                case "WARN": {
+                case LEVEL_WARN:
                     logger.warn(message);
                     break;
-                }
-                case "ERROR": {
+                case LEVEL_ERROR:
                     logger.error(message);
                     break;
-                }
-                default: {
+                default:
                     throw new BotCommandException("Invalid log level");
-                }
             }
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             throw new BotCommandException("Error occurred: " + e.getMessage());
         }
     }
@@ -184,27 +193,27 @@ public class LogMessage {
      */
     private Level convertToLog4jLevel(String logLevel) {
         switch (logLevel) {
-            case "INFO": {
+            case LEVEL_INFO:
                 return Level.INFO;
-            }
-            case "WARN": {
+            case LEVEL_WARN:
                 return Level.WARN;
-            }
-            case "ERROR": {
+            case LEVEL_ERROR:
                 return Level.ERROR;
-            }
+            default:
+                return Level.INFO;
         }
-        return Level.INFO;
     }
 
     public static String generateRandomScreenshotPath(String folderPath, String logLevel) {
+        // Create prefix based on log level
         String prefix = "info_";
         if (logLevel.equals(LEVEL_WARN)) {
             prefix = "warn_";
         } else if (logLevel.equals(LEVEL_ERROR)) {
             prefix = "error_";
         }
-        String fileName = prefix + String.valueOf(UUID.randomUUID()) + ".png";
+
+        String fileName = prefix + UUID.randomUUID() + ".png";
         Path path = Paths.get(folderPath, fileName);
         return path.toAbsolutePath().toString();
     }
@@ -213,9 +222,12 @@ public class LogMessage {
         if (this.testBotUri != null) {
             return this.testBotUri;
         }
+
+        // Original implementation
         String botUri = this.globalSessionContext.getBotUri();
         botUri = URLDecoder.decode(botUri, StandardCharsets.UTF_8);
-        botUri = botUri.substring(botUri.indexOf("Automation Anywhere") + "Automation Anywhere".length(), botUri.indexOf(63));
+        botUri = botUri.substring(botUri.indexOf("Automation Anywhere") + "Automation Anywhere".length(),
+                botUri.indexOf(63));
         botUri = botUri.replace("/", "\\");
         return botUri;
     }

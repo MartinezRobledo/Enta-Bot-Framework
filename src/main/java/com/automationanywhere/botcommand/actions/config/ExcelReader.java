@@ -1,20 +1,5 @@
 package com.automationanywhere.botcommand.actions.config;
 
-import com.automationanywhere.botcommand.data.impl.DictionaryValue;
-import com.automationanywhere.botcommand.data.impl.ListValue;
-import com.automationanywhere.botcommand.data.impl.NumberValue;
-import com.automationanywhere.botcommand.data.impl.StringValue;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.DataFormatter;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.ss.usermodel.Workbook;
-import org.apache.poi.ss.usermodel.WorkbookFactory;
-
 import com.automationanywhere.botcommand.utilities.file.FileValidator;
 import com.automationanywhere.commandsdk.annotations.*;
 import com.automationanywhere.commandsdk.annotations.rules.CredentialAllowPassword;
@@ -83,34 +68,41 @@ public class ExcelReader {
     ) {
         FileInputStream inputStream = null;
         Workbook workbook = null;
+
         try {
-            DictionaryValue result;
+            // Validar archivo (usa tu FileValidator real)
             FileValidator fileValidator = new FileValidator(inputFilePath);
-            String[] allowedExtensions = new String[]{"xlsm"};
+            String[] allowedExtensions = {"xlsm"};
             fileValidator.validateFile(allowedExtensions);
+
+            // Abrir archivo
             File file = new File(inputFilePath);
             inputStream = new FileInputStream(file);
-            String pwd = isPasswordProtected != null && isPasswordProtected != false ? filePassword.getInsecureString() : null;
-            workbook = pwd != null && !pwd.isEmpty() ? WorkbookFactory.create(inputStream, pwd) : WorkbookFactory.create(inputStream);
+
+            String pwd = (isPasswordProtected != null && isPasswordProtected) ? filePassword.getInsecureString() : null;
+            workbook = (pwd != null && !pwd.isEmpty())
+                    ? WorkbookFactory.create(inputStream, pwd)
+                    : WorkbookFactory.create(inputStream);
+
+            // Hoja principal
             Sheet configSheet = workbook.getSheet("Config");
             if (configSheet == null) {
                 throw new BotCommandException("No se encontró la hoja principal 'Config'");
             }
+
             DataFormatter dataFormatter = new DataFormatter();
-            DictionaryValue dictionaryValue = result = this.parseConfig(workbook, configSheet, dataFormatter, isTrimValues != null && isTrimValues != false, 2);
-            this.closeWorkbook(workbook);
-            this.closeInputStream(inputStream);
-            return dictionaryValue;
-        }
-        catch (Exception e) {
-            try {
-                throw new BotCommandException("Error leyendo archivo Excel: " + e.getMessage(), e);
-            }
-            catch (Throwable throwable) {
-                this.closeWorkbook(workbook);
-                this.closeInputStream(inputStream);
-                throw throwable;
-            }
+
+            // Procesar Config arrancando en fila 3 (índice 2)
+            DictionaryValue result =
+                    parseConfig(workbook, configSheet, dataFormatter, (isTrimValues != null && isTrimValues), START_ROW_CONFIG);
+
+            return result;
+
+        } catch (Exception e) {
+            throw new BotCommandException("Error leyendo archivo Excel: " + e.getMessage(), e);
+        } finally {
+            closeWorkbook(workbook);
+            closeInputStream(inputStream);
         }
     }
 
@@ -120,66 +112,85 @@ public class ExcelReader {
                                         DataFormatter dataFormatter,
                                         boolean isTrimValues,
                                         int startRowIndex) {
-        LinkedHashMap<String, Value> dict = new LinkedHashMap<String, Value>();
-        block14: for (int r = startRowIndex; r <= sheet.getLastRowNum(); ++r) {
-            String normType;
+
+        Map<String, Value> dict = new LinkedHashMap<>();
+
+        // Recorremos por índice (controlamos desde qué fila empezar)
+        for (int r = startRowIndex; r <= sheet.getLastRowNum(); r++) {
             Row row = sheet.getRow(r);
             if (row == null) continue;
-            Cell keyCell = row.getCell(0, Row.MissingCellPolicy.CREATE_NULL_AS_BLANK);
-            Cell valueCell = row.getCell(1, Row.MissingCellPolicy.CREATE_NULL_AS_BLANK);
-            Cell typeCell = row.getCell(2, Row.MissingCellPolicy.CREATE_NULL_AS_BLANK);
-            String key = dataFormatter.formatCellValue(keyCell);
+
+            Cell keyCell   = row.getCell(0, MissingCellPolicy.CREATE_NULL_AS_BLANK);
+            Cell valueCell = row.getCell(1, MissingCellPolicy.CREATE_NULL_AS_BLANK);
+            Cell typeCell  = row.getCell(2, MissingCellPolicy.CREATE_NULL_AS_BLANK);
+
+            String key   = dataFormatter.formatCellValue(keyCell);
             String value = dataFormatter.formatCellValue(valueCell);
-            String type = dataFormatter.formatCellValue(typeCell);
+            String type  = dataFormatter.formatCellValue(typeCell);
+
             if (isTrimValues) {
-                key = key != null ? key.trim() : "";
-                value = value != null ? value.trim() : "";
-                String string = type = type != null ? type.trim() : "";
+                key   = (key   != null) ? key.trim()   : "";
+                value = (value != null) ? value.trim() : "";
+                type  = (type  != null) ? type.trim()  : "";
             }
+
             if (key == null || key.isEmpty()) continue;
             if (type == null || type.isEmpty()) {
                 throw new BotCommandException("Tipo no definido para la clave: " + key + " (fila " + (r + 1) + ")");
             }
-            switch (normType = ExcelReader.normalize(type)) {
-                case "texto": {
+
+            // Normalizamos el tipo (sin acentos, minúsculas)
+            String normType = normalize(type);
+
+            switch (normType) {
+                case "texto":
                     dict.put(key, new StringValue(value));
-                    continue block14;
-                }
-                case "numero": {
+                    break;
+
+                case "numero":
                     try {
                         Double num = Double.parseDouble(value);
                         dict.put(key, new NumberValue(num));
-                        continue block14;
-                    }
-                    catch (NumberFormatException e) {
+                    } catch (NumberFormatException e) {
                         throw new BotCommandException("Valor no numérico para la clave '" + key + "': " + value + " (fila " + (r + 1) + ")");
                     }
-                }
+                    break;
+
                 case "lista": {
+                    // Hoja para la lista
                     Sheet listSheet = workbook.getSheet(value);
                     if (listSheet == null) {
                         throw new BotCommandException("Hoja para lista '" + value + "' no encontrada (clave '" + key + "')");
                     }
-                    List<Value> items = this.parseListSheet(listSheet, dataFormatter, isTrimValues, 1);
+
+                    List<Value> items = parseListSheet(listSheet, dataFormatter, isTrimValues, START_ROW_LIST);
+
                     ListValue listValue = new ListValue();
                     listValue.set(items);
                     dict.put(key, listValue);
-                    continue block14;
+                    break;
                 }
+
                 case "diccionario": {
+                    // Hoja para diccionario anidado
                     Sheet dictSheet = workbook.getSheet(value);
                     if (dictSheet == null) {
                         throw new BotCommandException("Hoja para diccionario '" + value + "' no encontrada (clave '" + key + "')");
                     }
-                    DictionaryValue nested = this.parseConfig(workbook, dictSheet, dataFormatter, isTrimValues, 2);
+
+                    // OJO: si tus diccionarios anidados NO tienen banner, cambiá START_ROW_DICT a 1
+                    DictionaryValue nested =
+                            parseConfig(workbook, dictSheet, dataFormatter, isTrimValues, START_ROW_DICT);
+
                     dict.put(key, nested);
-                    continue block14;
+                    break;
                 }
-                default: {
+
+                default:
                     throw new BotCommandException("Tipo de dato no soportado: '" + type + "' para clave: " + key + " (fila " + (r + 1) + ")");
-                }
             }
         }
+
         return new DictionaryValue(dict);
     }
 
@@ -188,51 +199,44 @@ public class ExcelReader {
                                        DataFormatter dataFormatter,
                                        boolean isTrimValues,
                                        int startRowIndex) {
-        ArrayList<Value> items = new ArrayList<Value>();
-        for (int r = startRowIndex; r <= listSheet.getLastRowNum(); ++r) {
+        List<Value> items = new ArrayList<>();
+
+        for (int r = startRowIndex; r <= listSheet.getLastRowNum(); r++) {
             Row row = listSheet.getRow(r);
             if (row == null) continue;
-            Cell v = row.getCell(0, Row.MissingCellPolicy.CREATE_NULL_AS_BLANK);
+
+            Cell v = row.getCell(0, MissingCellPolicy.CREATE_NULL_AS_BLANK);
             String listItem = dataFormatter.formatCellValue(v);
-            if (isTrimValues && listItem != null) {
-                listItem = listItem.trim();
+            if (isTrimValues && listItem != null) listItem = listItem.trim();
+
+            if (listItem != null && !listItem.isEmpty()) {
+                items.add(new StringValue(listItem));
             }
-            if (listItem == null || listItem.isEmpty()) continue;
-            items.add(new StringValue(listItem));
         }
         return items;
     }
 
     // ---------------- NORMALIZACIÓN DE TEXTO ----------------
     private static String normalize(String s) {
-        if (s == null) {
-            return "";
-        }
+        if (s == null) return "";
+        // toLowerCase + quitar acentos
         String lower = s.toLowerCase(Locale.ROOT);
-        String norm = Normalizer.normalize(lower, Normalizer.Form.NFD);
-        return norm.replaceAll("\\p{M}+", "");
+        String norm  = Normalizer.normalize(lower, Normalizer.Form.NFD);
+        return norm.replaceAll("\\p{M}+", ""); // quita diacríticos
     }
 
     // ---------------- CLEANUP ----------------
     private void closeWorkbook(Workbook workbook) {
         if (workbook != null) {
-            try {
-                workbook.close();
-            }
-            catch (IOException e) {
-                System.err.println("Error cerrando workbook: " + e.getMessage());
-            }
+            try { workbook.close(); }
+            catch (IOException e) { System.err.println("Error cerrando workbook: " + e.getMessage()); }
         }
     }
 
     private void closeInputStream(FileInputStream inputStream) {
         if (inputStream != null) {
-            try {
-                inputStream.close();
-            }
-            catch (IOException e) {
-                System.err.println("Error cerrando input stream: " + e.getMessage());
-            }
+            try { inputStream.close(); }
+            catch (IOException e) { System.err.println("Error cerrando input stream: " + e.getMessage()); }
         }
     }
 }
