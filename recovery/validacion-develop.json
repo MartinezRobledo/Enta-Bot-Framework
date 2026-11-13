@@ -1,0 +1,14 @@
+{
+  "branch": "develop",
+  "baseCommit": "fd8a8e444ee58e548770ab3cd3b6cbe52d92ffd8",
+  "packageVersion": "1.0.3-20261113-114527",
+  "jar": "A360EntaBotFramework-1.0.3-20261113-114527.jar",
+  "sha256": "ad5a7eeb1f4a83d916e0199143753fd90b53c2a592516c903772ccc4321ae266",
+  "gradleBuild": "PASS",
+  "regressionChecks": 20,
+  "publicProtectedSignaturesIdentical": true,
+  "compiledOwnClasses": 89,
+  "commands": 32,
+  "controlRoomTested": false,
+  "legacyTestsExecuted": false
+}

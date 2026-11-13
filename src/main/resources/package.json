@@ -1,0 +1,2794 @@
+{
+    "name": "A360EntaBotFramework",
+    "label": "[[label]]",
+    "description": "[[description]]",
+    "sessionType": {
+        "label": "[[sessionLabel]]",
+        "description": "[[sessionDescription]]"
+    },
+    "group": "com.automationanywhere",
+    "artifactName": "A360EntaBotFramework",
+    "packageVersion": "1.0.2-20260925-171647",
+    "codeVersion": "1.0.2-20260925-171647",
+    "author": "Adri\u00e1n Martinez",
+    "commands": [
+        {
+            "name": "config_read_excel",
+            "label": "Read Excel Config",
+            "description": "Read hierarchical config values from Excel",
+            "allowedAgentTargets": [
+                "WINDOWS"
+            ],
+            "minimumControlRoomVersion": "8750",
+            "minimumBotAgentVersion": "20.11",
+            "mainClass": "com.automationanywhere.botcommand.actions.config.ExcelReaderCommand",
+            "groupLabel": "Config",
+            "icon": "excel.svg",
+            "returnType": "DICTIONARY",
+            "returnSubtype": "STRING",
+            "returnLabel": "Output: config dictionary",
+            "returnRequired": true,
+            "returnName": "Config",
+            "attributes": [
+                {
+                    "name": "inputFilePath",
+                    "label": "Enter Excel file path",
+                    "type": "FILE",
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        },
+                        {
+                            "name": "FILE_EXTENSION",
+                            "value": ".xlsm"
+                        }
+                    ]
+                },
+                {
+                    "name": "isPasswordProtected",
+                    "label": "File is password protected",
+                    "description": "Select to supply password",
+                    "type": "CHECKBOX",
+                    "attributes": [
+                        {
+                            "name": "filePassword",
+                            "label": "Password",
+                            "type": "CREDENTIAL",
+                            "rules": [
+                                {
+                                    "name": "CREDENTIAL_ALLOW_PASSWORD"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "name": "isTrimValues",
+                    "label": "Trim values",
+                    "type": "BOOLEAN",
+                    "defaultValue": {
+                        "boolean": false,
+                        "type": "BOOLEAN"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "config_read_json",
+            "label": "Read JSON",
+            "description": "Read values from JSON file and save to dictionary",
+            "nodeLabel": "{{inputMethod}}, parse {{parsingMethod}} and save to {{returnTo}}",
+            "documentationUrl": "https://github.com/A360-Tools/Bot-Framework/blob/main/docs/config/JSONReader.md",
+            "allowedAgentTargets": [
+                "WINDOWS"
+            ],
+            "minimumControlRoomVersion": "8750",
+            "minimumBotAgentVersion": "20.11",
+            "mainClass": "com.automationanywhere.botcommand.actions.config.JSONReaderCommand",
+            "groupLabel": "Config",
+            "icon": "json.svg",
+            "returnType": "DICTIONARY",
+            "returnSubtype": "STRING",
+            "returnLabel": "Output: config dictionary",
+            "returnRequired": true,
+            "returnName": "Config",
+            "attributes": [
+                {
+                    "name": "inputMethod",
+                    "label": "JSON Source",
+                    "type": "SELECT",
+                    "defaultValue": {
+                        "string": "FILE",
+                        "type": "STRING"
+                    },
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        },
+                        {
+                            "name": "SELECT_MODES"
+                        }
+                    ],
+                    "options": [
+                        {
+                            "label": "File",
+                            "value": "FILE",
+                            "attributes": [
+                                {
+                                    "name": "jsonFilePath",
+                                    "label": "File Path",
+                                    "type": "FILE",
+                                    "rules": [
+                                        {
+                                            "name": "FILE_EXTENSION",
+                                            "value": ".json"
+                                        }
+                                    ]
+                                },
+                                {
+                                    "name": "charsetName",
+                                    "label": "Character Set",
+                                    "description": "Either a canonical name or an alias, E.g.US-ASCII,ISO-8859-1,UTF-16,UTF-16BE,UTF-16LE,UTF-32,UTF-32BE,UTF-32LE etc.",
+                                    "type": "TEXT",
+                                    "defaultValue": {
+                                        "string": "UTF-8",
+                                        "type": "STRING"
+                                    },
+                                    "rules": [
+                                        {
+                                            "name": "NOT_EMPTY"
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "label": "Text",
+                            "value": "TEXT",
+                            "attributes": [
+                                {
+                                    "name": "jsonText",
+                                    "label": "Text",
+                                    "description": "JSON content as text",
+                                    "type": "TEXTAREA",
+                                    "rules": [
+                                        {
+                                            "name": "NOT_EMPTY"
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "name": "parsingMethod",
+                    "label": "Parsing Option",
+                    "type": "SELECT",
+                    "defaultValue": {
+                        "string": "ALL",
+                        "type": "STRING"
+                    },
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        },
+                        {
+                            "name": "SELECT_MODES"
+                        }
+                    ],
+                    "options": [
+                        {
+                            "label": "All Nodes",
+                            "nodeLabel": "all nodes",
+                            "value": "ALL"
+                        },
+                        {
+                            "label": "Specific Node",
+                            "nodeLabel": "path segment represented by {{jsonPathSegments}}",
+                            "value": "SPECIFIC",
+                            "attributes": [
+                                {
+                                    "name": "jsonPathSegments",
+                                    "label": "Parse specific node",
+                                    "description": "Path segment from root (e.g., list: ['config','dev']) to parse entries in config.dev",
+                                    "type": "LIST",
+                                    "rules": [
+                                        {
+                                            "name": "LIST_TYPE",
+                                            "value": "STRING"
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "name": "isTrimValues",
+                    "label": "Trim values",
+                    "nodeLabel": "Trim values in resulting dictionary",
+                    "type": "BOOLEAN",
+                    "defaultValue": {
+                        "boolean": false,
+                        "type": "BOOLEAN"
+                    },
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "file_to_base64",
+            "label": "File \u2192 Base64",
+            "description": "Convierte cualquier archivo a una cadena Base64.",
+            "nodeLabel": "Convertir {{filePath}} a Base64",
+            "allowedAgentTargets": [
+                "WINDOWS"
+            ],
+            "minimumControlRoomVersion": "8750",
+            "minimumBotAgentVersion": "20.11",
+            "mainClass": "com.automationanywhere.botcommand.actions.conversion.FileToBase64Command",
+            "groupLabel": "Conversion",
+            "icon": "conversion.svg",
+            "returnType": "STRING",
+            "returnSubtype": "UNDEFINED",
+            "returnLabel": "Base64",
+            "returnRequired": false,
+            "attributes": [
+                {
+                    "name": "filePath",
+                    "label": "File",
+                    "description": "Ruta del archivo a convertir",
+                    "type": "FILE",
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "reformat_number_string",
+            "label": "Formatear N\u00famero (String)",
+            "description": "Convierte un n\u00famero en texto a otro formato textual (separadores y decimales) manteniendo el valor.",
+            "nodeLabel": "Formatear {{amount}} como {{targetFormat}}",
+            "allowedAgentTargets": [
+                "WINDOWS"
+            ],
+            "minimumControlRoomVersion": "8750",
+            "minimumBotAgentVersion": "20.11",
+            "mainClass": "com.automationanywhere.botcommand.actions.conversion.ReformatNumberStringCommand",
+            "groupLabel": "Conversion",
+            "icon": "conversion.svg",
+            "returnType": "STRING",
+            "returnSubtype": "UNDEFINED",
+            "returnLabel": "N\u00famero formateado",
+            "returnRequired": false,
+            "attributes": [
+                {
+                    "name": "amount",
+                    "label": "Importe (String)",
+                    "description": "Ej: 123 | 1,234.56 | 1.234,56 | $-1,234.56 | (123) | \"123\"",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "targetFormat",
+                    "label": "Formato de salida",
+                    "type": "SELECT",
+                    "options": [
+                        {
+                            "label": "d.ddd,dd",
+                            "value": "d.ddd,dd"
+                        },
+                        {
+                            "label": "d,ddd.dd",
+                            "value": "d,ddd.dd"
+                        },
+                        {
+                            "label": "dddd.dd",
+                            "value": "dddd.dd"
+                        },
+                        {
+                            "label": "dddd,dd",
+                            "value": "dddd,dd"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "string_to_number_smart",
+            "label": "String \u2192 Number",
+            "description": "Valida y convierte un importe (String) a NUMBER con reglas estrictas",
+            "nodeLabel": "Parsear {{amount}}",
+            "allowedAgentTargets": [
+                "WINDOWS"
+            ],
+            "minimumControlRoomVersion": "8750",
+            "minimumBotAgentVersion": "20.11",
+            "mainClass": "com.automationanywhere.botcommand.actions.conversion.StringToNumberSmartCommand",
+            "groupLabel": "Conversion",
+            "icon": "conversion.svg",
+            "returnType": "NUMBER",
+            "returnSubtype": "UNDEFINED",
+            "returnLabel": "Importe num\u00e9rico",
+            "returnRequired": false,
+            "attributes": [
+                {
+                    "name": "amount",
+                    "label": "Importe (String)",
+                    "description": "Ej: 123 | 1,234.56 | 1.234,56 | $-1,234.56 | (123) | $(1,234) | \"123\" | '123'",
+                    "type": "TEXT",
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "device_close_application",
+            "label": "Close Applications",
+            "description": "Sends close and then terminate request to running applications in list",
+            "nodeLabel": "in list {{killTaskList}}",
+            "documentationUrl": "https://github.com/A360-Tools/Bot-Framework/blob/main/docs/device/CloseApplications.md",
+            "allowedAgentTargets": [
+                "WINDOWS"
+            ],
+            "minimumControlRoomVersion": "8750",
+            "minimumBotAgentVersion": "20.11",
+            "mainClass": "com.automationanywhere.botcommand.actions.device.CloseApplicationsCommand",
+            "groupLabel": "Device",
+            "icon": "close.svg",
+            "returns": [
+                {
+                    "type": "UNDEFINED",
+                    "subtype": "ANY"
+                }
+            ],
+            "attributes": [
+                {
+                    "name": "killTaskList",
+                    "label": "List of process names to close",
+                    "description": "Sample list value: excel.exe, excel, chrome.exe, chrome, notepad",
+                    "type": "LIST",
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        },
+                        {
+                            "name": "LIST_TYPE",
+                            "value": "STRING"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "device_copy_file",
+            "label": "Copy File",
+            "description": "Copia un archivo desde un origen a un destino. Permite renombrar el archivo en el destino y crear carpetas faltantes.",
+            "nodeLabel": "Copy {{sourcePath}} to {{destinationPath}} \u00b7 mode {{pathType}} \u00b7 useSrcName={{useSourceName}}",
+            "allowedAgentTargets": [
+                "WINDOWS"
+            ],
+            "minimumControlRoomVersion": "8750",
+            "minimumBotAgentVersion": "20.11",
+            "mainClass": "com.automationanywhere.botcommand.actions.device.CopyFileCommand",
+            "groupLabel": "Device",
+            "icon": "folders.svg",
+            "returns": [
+                {
+                    "type": "UNDEFINED",
+                    "subtype": "ANY"
+                }
+            ],
+            "attributes": [
+                {
+                    "name": "pathType",
+                    "label": "Path mode",
+                    "type": "SELECT",
+                    "defaultValue": {
+                        "string": "RELATIVE",
+                        "type": "STRING"
+                    },
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        },
+                        {
+                            "name": "SELECT_MODES"
+                        }
+                    ],
+                    "options": [
+                        {
+                            "label": "Relative Path",
+                            "value": "RELATIVE",
+                            "attributes": [
+                                {
+                                    "name": "baseFolderPath",
+                                    "label": "Base folder path",
+                                    "description": "Carpeta ra\u00edz para resolver rutas relativas",
+                                    "type": "FILE",
+                                    "rules": [
+                                        {
+                                            "name": "NOT_EMPTY"
+                                        },
+                                        {
+                                            "name": "FILE_FOLDER"
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "label": "Absolute Path",
+                            "value": "ABSOLUTE"
+                        }
+                    ]
+                },
+                {
+                    "name": "sourcePath",
+                    "label": "Source file path",
+                    "description": "Ruta del archivo de origen",
+                    "type": "FILE",
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        }
+                    ]
+                },
+                {
+                    "name": "destinationPath",
+                    "label": "Destination path",
+                    "description": "Si 'Usar nombre de origen' o 'Destination is a folder' est\u00e1n activos, se interpreta como carpeta.",
+                    "type": "FILE",
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        }
+                    ]
+                },
+                {
+                    "name": "destinationIsFolder",
+                    "label": "Destination is a folder",
+                    "type": "BOOLEAN",
+                    "defaultValue": {
+                        "boolean": false,
+                        "type": "BOOLEAN"
+                    }
+                },
+                {
+                    "name": "createMissingFolders",
+                    "label": "Create missing folders",
+                    "description": "Crear las carpetas del destino si no existen",
+                    "type": "BOOLEAN",
+                    "defaultValue": {
+                        "boolean": true,
+                        "type": "BOOLEAN"
+                    }
+                },
+                {
+                    "name": "overwriteExisting",
+                    "label": "Overwrite if exists",
+                    "description": "Sobrescribir si el archivo destino ya existe",
+                    "type": "BOOLEAN",
+                    "defaultValue": {
+                        "boolean": false,
+                        "type": "BOOLEAN"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "device_copy_folder",
+            "label": "Copy Folder",
+            "description": "Copia todos los archivos dentro de una carpeta origen a una carpeta destino. Ignora subcarpetas.",
+            "nodeLabel": "Copy all files from {{sourceFolder}} to {{destinationFolder}} | mode {{pathType}}",
+            "allowedAgentTargets": [
+                "WINDOWS"
+            ],
+            "minimumControlRoomVersion": "8750",
+            "minimumBotAgentVersion": "20.11",
+            "mainClass": "com.automationanywhere.botcommand.actions.device.CopyFolderCommand",
+            "groupLabel": "Device",
+            "icon": "folders.svg",
+            "returns": [
+                {
+                    "type": "UNDEFINED",
+                    "subtype": "ANY"
+                }
+            ],
+            "attributes": [
+                {
+                    "name": "pathType",
+                    "label": "Path mode",
+                    "type": "SELECT",
+                    "defaultValue": {
+                        "string": "RELATIVE",
+                        "type": "STRING"
+                    },
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        },
+                        {
+                            "name": "SELECT_MODES"
+                        }
+                    ],
+                    "options": [
+                        {
+                            "label": "Relative Path",
+                            "value": "RELATIVE",
+                            "attributes": [
+                                {
+                                    "name": "baseFolderPath",
+                                    "label": "Base folder path",
+                                    "description": "Carpeta ra\u00edz para resolver rutas relativas",
+                                    "type": "FILE",
+                                    "rules": [
+                                        {
+                                            "name": "FILE_FOLDER"
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "label": "Absolute Path",
+                            "value": "ABSOLUTE"
+                        }
+                    ]
+                },
+                {
+                    "name": "sourceFolder",
+                    "label": "Source folder path",
+                    "description": "Ruta de la carpeta origen",
+                    "type": "FILE",
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        }
+                    ]
+                },
+                {
+                    "name": "destinationFolder",
+                    "label": "Destination folder path",
+                    "description": "Ruta de la carpeta destino",
+                    "type": "FILE",
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        }
+                    ]
+                },
+                {
+                    "name": "createMissingFolders",
+                    "label": "Create missing folders",
+                    "type": "CHECKBOX",
+                    "defaultValue": {
+                        "boolean": true,
+                        "type": "BOOLEAN"
+                    }
+                },
+                {
+                    "name": "overwriteExisting",
+                    "label": "Overwrite if exists",
+                    "type": "CHECKBOX",
+                    "defaultValue": {
+                        "boolean": false,
+                        "type": "BOOLEAN"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "device_create_folders",
+            "label": "Create Folders",
+            "description": "Creates directories by path, including any necessary but nonexistent parent directories.",
+            "nodeLabel": "By {{pathType}} present in {{folderPaths}} | and  base {{baseFolderPath}}  {{overwriteExisting}}",
+            "documentationUrl": "https://github.com/A360-Tools/Bot-Framework/blob/main/docs/device/CreateFolders.md",
+            "allowedAgentTargets": [
+                "WINDOWS"
+            ],
+            "minimumControlRoomVersion": "8750",
+            "minimumBotAgentVersion": "20.11",
+            "mainClass": "com.automationanywhere.botcommand.actions.device.CreateFoldersCommand",
+            "groupLabel": "Device",
+            "icon": "create_folders.svg",
+            "returns": [
+                {
+                    "type": "UNDEFINED",
+                    "subtype": "ANY"
+                }
+            ],
+            "attributes": [
+                {
+                    "name": "pathType",
+                    "label": "Creation mode",
+                    "type": "SELECT",
+                    "defaultValue": {
+                        "string": "RELATIVE",
+                        "type": "STRING"
+                    },
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        },
+                        {
+                            "name": "SELECT_MODES"
+                        }
+                    ],
+                    "options": [
+                        {
+                            "label": "Relative Path",
+                            "value": "RELATIVE",
+                            "attributes": [
+                                {
+                                    "name": "baseFolderPath",
+                                    "label": "Enter base folder path",
+                                    "description": "Root folder path where folders will be created",
+                                    "type": "FILE",
+                                    "rules": [
+                                        {
+                                            "name": "NOT_EMPTY"
+                                        },
+                                        {
+                                            "name": "FILE_FOLDER"
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "label": "Absolute Path",
+                            "value": "ABSOLUTE"
+                        }
+                    ]
+                },
+                {
+                    "name": "folderPaths",
+                    "label": "Folder names or path",
+                    "description": "E.g. Input, Output, Parent\\Child\\Input ",
+                    "type": "LIST",
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        },
+                        {
+                            "name": "LIST_TYPE",
+                            "value": "STRING"
+                        }
+                    ]
+                },
+                {
+                    "name": "overwriteExisting",
+                    "label": "Overwrite existing folders",
+                    "nodeLabel": "Overwrite folders if they already exist",
+                    "description": "Whether to overwrite existing folders if they already exist.",
+                    "type": "BOOLEAN",
+                    "defaultValue": {
+                        "boolean": false,
+                        "type": "BOOLEAN"
+                    }
+                },
+                {
+                    "name": "appendToExistingDictionary",
+                    "label": "Append created folder details to existing config",
+                    "type": "CHECKBOX",
+                    "attributes": [
+                        {
+                            "name": "configDictionary",
+                            "label": "Existing config dictionary",
+                            "description": "Appends created folder details: Key= folder name | value = folder path",
+                            "type": "VARIABLE",
+                            "rules": [
+                                {
+                                    "name": "VARIABLE_TYPE",
+                                    "value": "DICTIONARY"
+                                }
+                            ]
+                        },
+                        {
+                            "name": "suffix",
+                            "label": "Key suffix",
+                            "description": "Adds suffix to the keys of generated folders",
+                            "type": "TEXT",
+                            "defaultValue": {
+                                "string": "_Path",
+                                "type": "STRING"
+                            }
+                        },
+                        {
+                            "name": "prefix",
+                            "label": "Key prefix",
+                            "description": "Adds prefix to the keys of generated folders",
+                            "type": "TEXT"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "device_delete_files_folders",
+            "label": "Clean Directory",
+            "description": "Remove files/folders based on rule set",
+            "nodeLabel": "{{inputFolderPath}} by deleting {{selectMethod}} {{recursive}}",
+            "documentationUrl": "https://github.com/A360-Tools/Bot-Framework/blob/main/docs/device/DeleteFilesFolders.md",
+            "allowedAgentTargets": [
+                "WINDOWS"
+            ],
+            "minimumControlRoomVersion": "8750",
+            "minimumBotAgentVersion": "20.11",
+            "mainClass": "com.automationanywhere.botcommand.actions.device.DeleteFilesFoldersCommand",
+            "groupLabel": "Device",
+            "icon": "delete_folders.svg",
+            "returns": [
+                {
+                    "type": "UNDEFINED",
+                    "subtype": "ANY"
+                }
+            ],
+            "attributes": [
+                {
+                    "name": "inputFolderPath",
+                    "label": "Enter base folder path",
+                    "description": "Files/Folders will be scanned within this folder for deletion",
+                    "type": "FILE",
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        },
+                        {
+                            "name": "FILE_FOLDER"
+                        }
+                    ]
+                },
+                {
+                    "name": "selectMethod",
+                    "label": "Deletion option",
+                    "type": "SELECT",
+                    "defaultValue": {
+                        "string": "ALL",
+                        "type": "STRING"
+                    },
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        },
+                        {
+                            "name": "SELECT_MODES"
+                        }
+                    ],
+                    "options": [
+                        {
+                            "label": "Directories and Files",
+                            "nodeLabel": "it's directories and files",
+                            "value": "ALL"
+                        },
+                        {
+                            "label": "Files Only",
+                            "nodeLabel": "it's files",
+                            "value": "FILE"
+                        }
+                    ]
+                },
+                {
+                    "name": "recursive",
+                    "label": "All subdirectories are searched as well",
+                    "nodeLabel": "Action all subdirectories",
+                    "type": "CHECKBOX",
+                    "defaultValue": {
+                        "boolean": true,
+                        "type": "BOOLEAN"
+                    }
+                },
+                {
+                    "name": "thresholdNumber",
+                    "label": "Threshold number",
+                    "description": "any file/folder with threshold age value older than this value will be deleted",
+                    "type": "NUMBER",
+                    "defaultValue": {
+                        "number": "30",
+                        "type": "NUMBER"
+                    },
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        },
+                        {
+                            "name": "GREATER_THAN_EQUALS",
+                            "value": "0"
+                        },
+                        {
+                            "name": "NUMBER_INTEGER"
+                        }
+                    ]
+                },
+                {
+                    "name": "thresholdUnit",
+                    "label": "Threshold Unit",
+                    "type": "SELECT",
+                    "defaultValue": {
+                        "string": "DAY",
+                        "type": "STRING"
+                    },
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        },
+                        {
+                            "name": "SELECT_MODES"
+                        }
+                    ],
+                    "options": [
+                        {
+                            "label": "DAY",
+                            "value": "DAY"
+                        },
+                        {
+                            "label": "HOUR",
+                            "value": "HOUR"
+                        },
+                        {
+                            "label": "MINUTE",
+                            "value": "MINUTE"
+                        },
+                        {
+                            "label": "SECOND",
+                            "value": "SECOND"
+                        }
+                    ]
+                },
+                {
+                    "name": "thresholdCriteria",
+                    "label": "Threshold age type",
+                    "type": "SELECT",
+                    "defaultValue": {
+                        "string": "CREATION",
+                        "type": "STRING"
+                    },
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        },
+                        {
+                            "name": "SELECT_MODES"
+                        }
+                    ],
+                    "options": [
+                        {
+                            "label": "CREATION",
+                            "value": "CREATION"
+                        },
+                        {
+                            "label": "LAST MODIFICATION",
+                            "value": "MODIFICATION"
+                        }
+                    ]
+                },
+                {
+                    "name": "skipFolders",
+                    "label": "Ignore specific folder paths",
+                    "type": "CHECKBOX",
+                    "defaultValue": {
+                        "boolean": false,
+                        "type": "BOOLEAN"
+                    },
+                    "attributes": [
+                        {
+                            "name": "skipFolderPathPattern",
+                            "label": "Regex pattern to match folder paths to ignore",
+                            "description": ".*\\\\subDirectory to skip folder called subDirectory on windows platformMatching will be done on absolute path in OS file separator format.",
+                            "type": "TEXT",
+                            "rules": [
+                                {
+                                    "name": "NOT_EMPTY"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "name": "skipFiles",
+                    "label": "Ignore specific file paths",
+                    "type": "CHECKBOX",
+                    "defaultValue": {
+                        "boolean": false,
+                        "type": "BOOLEAN"
+                    },
+                    "attributes": [
+                        {
+                            "name": "skipFilePathPattern",
+                            "label": "Regex pattern to match file paths to ignore",
+                            "description": ".*\\.txt$ to skip all text files on windows platform. Matching will be done on absolute path in OS file separator format.",
+                            "type": "TEXT",
+                            "rules": [
+                                {
+                                    "name": "NOT_EMPTY"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "name": "unableToDeleteBehavior",
+                    "label": "If certain files/folders cannot be deleted",
+                    "description": "Behavior in case a file is locked/missing permission",
+                    "type": "RADIO",
+                    "defaultValue": {
+                        "string": "IGNORE",
+                        "type": "STRING"
+                    },
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        }
+                    ],
+                    "options": [
+                        {
+                            "label": "Throw error",
+                            "value": "THROW"
+                        },
+                        {
+                            "label": "Ignore",
+                            "value": "IGNORE"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "documentation_about",
+            "label": "About",
+            "description": "Document task functionality, input, output, expected application version and application setting to run this task.Note: Abouts are ignored when the bot runs",
+            "nodeLabel": "Task Description",
+            "documentationUrl": "https://github.com/A360-Tools/Bot-Framework/blob/main/docs/documentation/About.md",
+            "allowedAgentTargets": [
+                "WINDOWS"
+            ],
+            "minimumControlRoomVersion": "8750",
+            "minimumBotAgentVersion": "20.11",
+            "mainClass": "com.automationanywhere.botcommand.actions.documentation.AboutCommand",
+            "groupLabel": "Documentation",
+            "icon": "about.svg",
+            "textColor": "#2196f3",
+            "comment": true,
+            "returns": [
+                {
+                    "type": "UNDEFINED",
+                    "subtype": "ANY"
+                }
+            ],
+            "attributes": [
+                {
+                    "name": "aboutDescription",
+                    "label": "Documentation",
+                    "type": "HTML",
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "documentation_caution_sequence",
+            "label": "Caution Steps",
+            "description": "Highlights caution and runs sequence of commands, allows documentation and screenshots",
+            "nodeLabel": "{{cautionSequenceTitle}}",
+            "documentationUrl": "https://github.com/A360-Tools/Bot-Framework/blob/main/docs/documentation/CautionSequence.md",
+            "allowedAgentTargets": [
+                "WINDOWS"
+            ],
+            "minimumControlRoomVersion": "8750",
+            "minimumBotAgentVersion": "20.11",
+            "mainClass": "com.automationanywhere.botcommand.actions.documentation.CautionSequenceCommand",
+            "groupLabel": "Documentation",
+            "nestable": true,
+            "icon": "caution.svg",
+            "textColor": "#ffa500",
+            "returns": [
+                {
+                    "type": "UNDEFINED",
+                    "subtype": "ANY"
+                }
+            ],
+            "attributes": [
+                {
+                    "name": "cautionSequenceTitle",
+                    "label": "Title",
+                    "type": "TEXT",
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        }
+                    ]
+                },
+                {
+                    "name": "cautionSequenceDescription",
+                    "label": "Documentation",
+                    "description": "Documentation of actions being performed which needs caution",
+                    "type": "HTML"
+                },
+                {
+                    "name": "cautionSequenceCheckBox1",
+                    "label": "Capture image",
+                    "type": "CHECKBOX",
+                    "attributes": [
+                        {
+                            "name": "cautionSequenceText1",
+                            "label": "Detail about captured image",
+                            "type": "TEXTAREA"
+                        },
+                        {
+                            "name": "cautionSequenceImage1",
+                            "type": "IMAGE"
+                        }
+                    ]
+                },
+                {
+                    "name": "cautionSequenceCheckBox2",
+                    "label": "Capture image",
+                    "type": "CHECKBOX",
+                    "attributes": [
+                        {
+                            "name": "cautionSequenceText2",
+                            "label": "Detail about captured image",
+                            "type": "TEXTAREA"
+                        },
+                        {
+                            "name": "cautionSequenceImage2",
+                            "type": "IMAGE"
+                        }
+                    ]
+                },
+                {
+                    "name": "cautionSequenceCheckBox3",
+                    "label": "Captured image",
+                    "type": "CHECKBOX",
+                    "attributes": [
+                        {
+                            "name": "cautionSequenceText3",
+                            "label": "Detail about captured image",
+                            "type": "TEXTAREA"
+                        },
+                        {
+                            "name": "cautionSequenceImage3",
+                            "type": "IMAGE"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "documentation_comment",
+            "label": "Comment",
+            "description": "Inserts a comment, allows helper image. Note: Comments are ignored when the bot runs",
+            "nodeLabel": "{{commentDescription}}",
+            "documentationUrl": "https://github.com/A360-Tools/Bot-Framework/blob/main/docs/documentation/Comment.md",
+            "allowedAgentTargets": [
+                "WINDOWS"
+            ],
+            "minimumControlRoomVersion": "8750",
+            "minimumBotAgentVersion": "20.11",
+            "mainClass": "com.automationanywhere.botcommand.actions.documentation.CommentCommand",
+            "groupLabel": "Documentation",
+            "icon": "comment.svg",
+            "textColor": "#608d56",
+            "comment": true,
+            "returns": [
+                {
+                    "type": "UNDEFINED",
+                    "subtype": "ANY"
+                }
+            ],
+            "attributes": [
+                {
+                    "name": "commentDescription",
+                    "label": "Comment Text",
+                    "type": "TEXTAREA",
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        }
+                    ]
+                },
+                {
+                    "name": "commentImage",
+                    "label": "Help Image",
+                    "type": "IMAGE"
+                }
+            ]
+        },
+        {
+            "name": "documentation_sequence",
+            "label": "Steps",
+            "description": "Runs a sequence of commands, allows documentation and screenshots",
+            "nodeLabel": "{{sequenceTitle}}",
+            "documentationUrl": "https://github.com/A360-Tools/Bot-Framework/blob/main/docs/documentation/Sequence.md",
+            "allowedAgentTargets": [
+                "WINDOWS"
+            ],
+            "minimumControlRoomVersion": "8750",
+            "minimumBotAgentVersion": "20.11",
+            "mainClass": "com.automationanywhere.botcommand.actions.documentation.SequenceCommand",
+            "groupLabel": "Documentation",
+            "nestable": true,
+            "icon": "sequence.svg",
+            "textColor": "#4285f4",
+            "backgroundColor": "#4285f4",
+            "returns": [
+                {
+                    "type": "UNDEFINED",
+                    "subtype": "ANY"
+                }
+            ],
+            "attributes": [
+                {
+                    "name": "sequenceTitle",
+                    "label": "Title",
+                    "type": "TEXT",
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        }
+                    ]
+                },
+                {
+                    "name": "sequenceDescription",
+                    "label": "Documentation",
+                    "description": "Documentation of actions being performed",
+                    "type": "HTML"
+                },
+                {
+                    "name": "sequenceCheckBox1",
+                    "label": "Capture image",
+                    "type": "CHECKBOX",
+                    "attributes": [
+                        {
+                            "name": "sequenceImageText1",
+                            "label": "Detail about captured image",
+                            "type": "TEXTAREA"
+                        },
+                        {
+                            "name": "sequenceImage1",
+                            "type": "IMAGE"
+                        }
+                    ]
+                },
+                {
+                    "name": "sequenceCheckBox2",
+                    "label": "Capture image",
+                    "type": "CHECKBOX",
+                    "attributes": [
+                        {
+                            "name": "sequenceImageText2",
+                            "label": "Detail about captured image",
+                            "type": "TEXTAREA"
+                        },
+                        {
+                            "name": "sequenceImage2",
+                            "type": "IMAGE"
+                        }
+                    ]
+                },
+                {
+                    "name": "sequenceCheckBox3",
+                    "label": "Capture image",
+                    "type": "CHECKBOX",
+                    "attributes": [
+                        {
+                            "name": "sequenceImageText3",
+                            "label": "Detail about captured image",
+                            "type": "TEXTAREA"
+                        },
+                        {
+                            "name": "sequenceImage3",
+                            "type": "IMAGE"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "list_add_item_advanced",
+            "label": "Add Item",
+            "description": "Adds an item at the beginning, end, or a specific index of a list.",
+            "nodeLabel": "Add {{itemType}} to {{inputList}}",
+            "allowedAgentTargets": [
+                "WINDOWS"
+            ],
+            "minimumControlRoomVersion": "8750",
+            "minimumBotAgentVersion": "20.11",
+            "mainClass": "com.automationanywhere.botcommand.actions.list.AddItemAdvancedCommand",
+            "groupLabel": "Lists",
+            "icon": "list.svg",
+            "returnType": "LIST",
+            "returnSubtype": "UNDEFINED",
+            "returnLabel": "Updated List",
+            "returnRequired": false,
+            "attributes": [
+                {
+                    "name": "inputList",
+                    "label": "Input List",
+                    "description": "Target list",
+                    "type": "LIST",
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        }
+                    ]
+                },
+                {
+                    "name": "insertPosition",
+                    "label": "Insert Position",
+                    "type": "SELECT",
+                    "defaultValue": {
+                        "string": "END",
+                        "type": "STRING"
+                    },
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        },
+                        {
+                            "name": "SELECT_MODES",
+                            "value": "SINGLE_SELECT"
+                        }
+                    ],
+                    "options": [
+                        {
+                            "label": "Beginning",
+                            "value": "BEGINNING"
+                        },
+                        {
+                            "label": "End",
+                            "value": "END"
+                        },
+                        {
+                            "label": "Index",
+                            "value": "INDEX",
+                            "attributes": [
+                                {
+                                    "name": "index",
+                                    "label": "Index",
+                                    "description": "Position where the item will be inserted",
+                                    "type": "NUMBER"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "name": "itemType",
+                    "label": "Item Type",
+                    "type": "SELECT",
+                    "defaultValue": {
+                        "string": "STRING",
+                        "type": "STRING"
+                    },
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        },
+                        {
+                            "name": "SELECT_MODES",
+                            "value": "SINGLE_SELECT"
+                        }
+                    ],
+                    "options": [
+                        {
+                            "label": "String",
+                            "value": "STRING",
+                            "attributes": [
+                                {
+                                    "name": "stringItem",
+                                    "label": "String Item",
+                                    "type": "VARIABLE",
+                                    "rules": [
+                                        {
+                                            "name": "VARIABLE_TYPE",
+                                            "value": "STRING"
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "label": "Number",
+                            "value": "NUMBER",
+                            "attributes": [
+                                {
+                                    "name": "numberItem",
+                                    "label": "Number Item",
+                                    "type": "VARIABLE",
+                                    "rules": [
+                                        {
+                                            "name": "VARIABLE_TYPE",
+                                            "value": "NUMBER"
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "label": "Boolean",
+                            "value": "BOOLEAN",
+                            "attributes": [
+                                {
+                                    "name": "booleanItem",
+                                    "label": "Boolean Item",
+                                    "type": "VARIABLE",
+                                    "rules": [
+                                        {
+                                            "name": "VARIABLE_TYPE",
+                                            "value": "BOOLEAN"
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "label": "Dictionary",
+                            "value": "DICTIONARY",
+                            "attributes": [
+                                {
+                                    "name": "dictionaryItem",
+                                    "label": "Dictionary Item",
+                                    "type": "VARIABLE",
+                                    "rules": [
+                                        {
+                                            "name": "VARIABLE_TYPE",
+                                            "value": "DICTIONARY"
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "label": "List",
+                            "value": "LIST",
+                            "attributes": [
+                                {
+                                    "name": "listItem",
+                                    "label": "List Item",
+                                    "type": "VARIABLE",
+                                    "rules": [
+                                        {
+                                            "name": "VARIABLE_TYPE",
+                                            "value": "LIST"
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "label": "DateTime",
+                            "value": "DATETIME",
+                            "attributes": [
+                                {
+                                    "name": "dateTimeItem",
+                                    "label": "DateTime Item",
+                                    "type": "VARIABLE",
+                                    "rules": [
+                                        {
+                                            "name": "VARIABLE_TYPE",
+                                            "value": "DATETIME"
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "list_remove_duplicates_trim",
+            "label": "Remove Duplicates",
+            "description": "Devuelve una lista sin duplicados, trimmeando cada valor y preservando el orden.",
+            "nodeLabel": "From {{inputList}}",
+            "allowedAgentTargets": [
+                "WINDOWS"
+            ],
+            "minimumControlRoomVersion": "8750",
+            "minimumBotAgentVersion": "20.11",
+            "mainClass": "com.automationanywhere.botcommand.actions.list.RemoveDuplicatesFromListCommand",
+            "groupLabel": "Lists",
+            "icon": "list.svg",
+            "returnType": "LIST",
+            "returnSubtype": "UNDEFINED",
+            "returnLabel": "Clean List",
+            "returnRequired": false,
+            "attributes": [
+                {
+                    "name": "inputList",
+                    "label": "Input List",
+                    "description": "Lista de valores a limpiar (se aplicar\u00e1 trim y se eliminar\u00e1n duplicados)",
+                    "type": "LIST",
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        },
+                        {
+                            "name": "LIST_TYPE",
+                            "value": "STRING"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "log_message",
+            "label": "Log Message",
+            "description": "Logs message to session log file , optionally captures a screenshot",
+            "nodeLabel": "{{logLevel}} : {{logMessage}}",
+            "documentationUrl": "https://github.com/A360-Tools/Bot-Framework/blob/main/docs/logs/LogMessage.md",
+            "allowedAgentTargets": [
+                "WINDOWS"
+            ],
+            "minimumControlRoomVersion": "8750",
+            "minimumBotAgentVersion": "20.11",
+            "mainClass": "com.automationanywhere.botcommand.actions.logs.LogMessageCommand",
+            "groupLabel": "Logs",
+            "icon": "log_message.svg",
+            "textColor": "#4285f4",
+            "comment": true,
+            "returns": [
+                {
+                    "type": "UNDEFINED",
+                    "subtype": "ANY"
+                }
+            ],
+            "attributes": [
+                {
+                    "name": "session",
+                    "label": "Logger session",
+                    "description": "Set valid logger session",
+                    "type": "SESSION",
+                    "defaultValue": {
+                        "sessionName": {
+                            "string": "Default",
+                            "type": "STRING"
+                        },
+                        "type": "SESSION"
+                    },
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        },
+                        {
+                            "name": "SESSION_OBJECT"
+                        }
+                    ]
+                },
+                {
+                    "name": "logLevel",
+                    "label": "Select log type",
+                    "type": "SELECT",
+                    "defaultValue": {
+                        "string": "INFO",
+                        "type": "STRING"
+                    },
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        },
+                        {
+                            "name": "SELECT_MODES"
+                        }
+                    ],
+                    "options": [
+                        {
+                            "label": "INFORMATION",
+                            "value": "INFO"
+                        },
+                        {
+                            "label": "WARNING",
+                            "value": "WARN"
+                        },
+                        {
+                            "label": "ERROR",
+                            "value": "ERROR"
+                        }
+                    ]
+                },
+                {
+                    "name": "logMessage",
+                    "label": "Enter message to log",
+                    "type": "TEXTAREA",
+                    "defaultValue": {
+                        "string": "Sample log message",
+                        "type": "STRING"
+                    },
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        }
+                    ]
+                },
+                {
+                    "name": "captureScreenshot",
+                    "label": "Capture Screenshot",
+                    "type": "BOOLEAN",
+                    "defaultValue": {
+                        "boolean": false,
+                        "type": "BOOLEAN"
+                    },
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        }
+                    ]
+                },
+                {
+                    "name": "logVariable",
+                    "label": "Log variable values",
+                    "type": "SELECT",
+                    "defaultValue": {
+                        "string": "NO",
+                        "type": "STRING"
+                    },
+                    "rules": [
+                        {
+                            "name": "SELECT_MODES"
+                        }
+                    ],
+                    "options": [
+                        {
+                            "label": "No",
+                            "value": "NO"
+                        },
+                        {
+                            "label": "Yes",
+                            "value": "YES",
+                            "attributes": [
+                                {
+                                    "name": "list",
+                                    "label": "Log following variables",
+                                    "type": "ENTRYLIST",
+                                    "rules": [
+                                        {
+                                            "name": "ENTRYLIST_ADD_LABEL",
+                                            "value": "Add variable"
+                                        },
+                                        {
+                                            "name": "ENTRYLIST_EMPTY_LABEL",
+                                            "value": "No value to log"
+                                        },
+                                        {
+                                            "name": "ENTRYLIST_ENTRY_LABEL",
+                                            "value": "Variable details"
+                                        },
+                                        {
+                                            "name": "ENTRYLIST_ENTRY_UNIQUE",
+                                            "value": "NAME"
+                                        }
+                                    ],
+                                    "options": [
+                                        {
+                                            "name": "NAME",
+                                            "label": "Variable name/description",
+                                            "nodeLabel": "{{NAME}}"
+                                        },
+                                        {
+                                            "name": "VALUE",
+                                            "label": "Variable Value",
+                                            "nodeLabel": "{{VALUE}}"
+                                        }
+                                    ],
+                                    "attributes": [
+                                        {
+                                            "name": "NAME",
+                                            "label": "Name",
+                                            "type": "TEXT",
+                                            "rules": [
+                                                {
+                                                    "name": "NOT_EMPTY"
+                                                }
+                                            ]
+                                        },
+                                        {
+                                            "name": "VALUE",
+                                            "label": "Value",
+                                            "type": "VARIABLE"
+                                        }
+                                    ]
+                                },
+                                {
+                                    "name": "sourceMap",
+                                    "label": "Common datatype variables to log",
+                                    "type": "VARIABLEMAP"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "logs_start_session",
+            "label": "Start Logger Session",
+            "description": "Create new logger session",
+            "nodeLabel": "{{returnTo}}",
+            "documentationUrl": "https://github.com/A360-Tools/Bot-Framework/blob/main/docs/logs/StartLoggerSession.md",
+            "allowedAgentTargets": [
+                "WINDOWS"
+            ],
+            "minimumControlRoomVersion": "8750",
+            "minimumBotAgentVersion": "20.11",
+            "mainClass": "com.automationanywhere.botcommand.actions.logs.StartLoggerSessionCommand",
+            "groupLabel": "Logs",
+            "icon": "log_session.svg",
+            "returnType": "SESSION",
+            "returnSubtype": "UNDEFINED",
+            "returnLabel": "",
+            "returnRequired": true,
+            "returnName": "Logger",
+            "returnSettings": [
+                "SESSION_TARGET"
+            ],
+            "attributes": [
+                {
+                    "name": "logLevelsAndFileOption",
+                    "label": "Append option for different levels of log",
+                    "type": "SELECT",
+                    "defaultValue": {
+                        "string": "COMMON_FILE",
+                        "type": "STRING"
+                    },
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        },
+                        {
+                            "name": "SELECT_MODES"
+                        }
+                    ],
+                    "options": [
+                        {
+                            "label": "Same File",
+                            "value": "COMMON_FILE",
+                            "attributes": [
+                                {
+                                    "name": "logFilePath",
+                                    "label": "Log file path",
+                                    "type": "FILE",
+                                    "rules": [
+                                        {
+                                            "name": "NOT_EMPTY"
+                                        },
+                                        {
+                                            "name": "FILE_LOCAL"
+                                        },
+                                        {
+                                            "name": "FILE_EXTENSION",
+                                            "value": ".html"
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "label": "Custom Configuration",
+                            "value": "CONFIGURABLE_FILE",
+                            "attributes": [
+                                {
+                                    "name": "infoLogFilePath",
+                                    "label": "INFO logs file path",
+                                    "type": "FILE",
+                                    "rules": [
+                                        {
+                                            "name": "NOT_EMPTY"
+                                        },
+                                        {
+                                            "name": "FILE_LOCAL"
+                                        },
+                                        {
+                                            "name": "FILE_EXTENSION",
+                                            "value": ".html"
+                                        }
+                                    ]
+                                },
+                                {
+                                    "name": "warnLogFilePath",
+                                    "label": "WARN logs file path",
+                                    "type": "FILE",
+                                    "rules": [
+                                        {
+                                            "name": "NOT_EMPTY"
+                                        },
+                                        {
+                                            "name": "FILE_LOCAL"
+                                        },
+                                        {
+                                            "name": "FILE_EXTENSION",
+                                            "value": ".html"
+                                        }
+                                    ]
+                                },
+                                {
+                                    "name": "errorLogFilePath",
+                                    "label": "ERROR logs file path",
+                                    "type": "FILE",
+                                    "rules": [
+                                        {
+                                            "name": "NOT_EMPTY"
+                                        },
+                                        {
+                                            "name": "FILE_LOCAL"
+                                        },
+                                        {
+                                            "name": "FILE_EXTENSION",
+                                            "value": ".html"
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "name": "rollingFileSizeMB",
+                    "label": "Rollover file size in MB",
+                    "type": "NUMBER",
+                    "defaultValue": {
+                        "number": "10",
+                        "type": "NUMBER"
+                    },
+                    "rules": [
+                        {
+                            "name": "GREATER_THAN",
+                            "value": "0"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "logs_stop_session",
+            "label": "Stop Logger Session",
+            "description": "Stops a logger session",
+            "nodeLabel": "{{session}}",
+            "documentationUrl": "https://github.com/A360-Tools/Bot-Framework/blob/main/docs/logs/StopLoggerSession.md",
+            "allowedAgentTargets": [
+                "WINDOWS"
+            ],
+            "minimumControlRoomVersion": "8750",
+            "minimumBotAgentVersion": "20.11",
+            "mainClass": "com.automationanywhere.botcommand.actions.logs.StopLoggerSessionCommand",
+            "groupLabel": "Logs",
+            "icon": "log_session.svg",
+            "returns": [
+                {
+                    "type": "UNDEFINED",
+                    "subtype": "ANY"
+                }
+            ],
+            "attributes": [
+                {
+                    "name": "session",
+                    "label": "Logger Session",
+                    "description": "Logger session to stop logging",
+                    "type": "SESSION",
+                    "defaultValue": {
+                        "sessionName": {
+                            "string": "Default",
+                            "type": "STRING"
+                        },
+                        "type": "SESSION"
+                    },
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        },
+                        {
+                            "name": "SESSION_OBJECT"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "workqueue_add_item_data_field",
+            "label": "Add Item Data Field",
+            "description": "Encola (staging) un nuevo campo en [Item Data] del \u00edtem (se aplicar\u00e1 con Commit).",
+            "allowedAgentTargets": [
+                "WINDOWS"
+            ],
+            "minimumControlRoomVersion": "8750",
+            "minimumBotAgentVersion": "20.11",
+            "mainClass": "com.automationanywhere.botcommand.actions.workqueues.AddItemDataFieldCommand",
+            "groupLabel": "Workqueues",
+            "icon": "workqueue.svg",
+            "returnType": "DICTIONARY",
+            "returnSubtype": "UNDEFINED",
+            "returnLabel": "Asignar metadatos del item a",
+            "returnRequired": false,
+            "attributes": [
+                {
+                    "name": "filePath",
+                    "label": "Path to file Access",
+                    "type": "FILE",
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        }
+                    ]
+                },
+                {
+                    "name": "identifyBy",
+                    "label": "Select item by",
+                    "type": "SELECT",
+                    "defaultValue": {
+                        "string": "id",
+                        "type": "STRING"
+                    },
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        }
+                    ],
+                    "options": [
+                        {
+                            "label": "By Id",
+                            "value": "id",
+                            "attributes": [
+                                {
+                                    "name": "itemId",
+                                    "label": "Item Id (workqueue.Id)",
+                                    "type": "NUMBER"
+                                }
+                            ]
+                        },
+                        {
+                            "label": "By Key",
+                            "value": "key",
+                            "attributes": [
+                                {
+                                    "name": "itemKey",
+                                    "label": "Item Key (workqueue.Key)",
+                                    "type": "TEXT"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "name": "dataKey",
+                    "label": "Data Key ([Item Data].[Key])",
+                    "type": "TEXT",
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        }
+                    ]
+                },
+                {
+                    "name": "dataValue",
+                    "label": "Data Value ([Item Data].[Value])",
+                    "type": "TEXT",
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "workqueue_cancel_item_data",
+            "label": "Cancel Item Data",
+            "description": "Descarta los cambios staged de [Item Data] (no impacta la base).",
+            "allowedAgentTargets": [
+                "WINDOWS"
+            ],
+            "minimumControlRoomVersion": "8750",
+            "minimumBotAgentVersion": "20.11",
+            "mainClass": "com.automationanywhere.botcommand.actions.workqueues.CancelItemDataChangesCommand",
+            "groupLabel": "Workqueues",
+            "icon": "workqueue.svg",
+            "returnType": "DICTIONARY",
+            "returnSubtype": "UNDEFINED",
+            "returnLabel": "Asignar metadatos del item a",
+            "returnRequired": false,
+            "attributes": [
+                {
+                    "name": "filePath",
+                    "label": "Path to file Access",
+                    "type": "FILE",
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        }
+                    ]
+                },
+                {
+                    "name": "identifyBy",
+                    "label": "Select item by",
+                    "type": "SELECT",
+                    "defaultValue": {
+                        "string": "id",
+                        "type": "STRING"
+                    },
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        }
+                    ],
+                    "options": [
+                        {
+                            "label": "By Id",
+                            "value": "id",
+                            "attributes": [
+                                {
+                                    "name": "itemId",
+                                    "label": "Item Id (workqueue.Id)",
+                                    "type": "NUMBER"
+                                }
+                            ]
+                        },
+                        {
+                            "label": "By Key",
+                            "value": "key",
+                            "attributes": [
+                                {
+                                    "name": "itemKey",
+                                    "label": "Item Key (workqueue.Key)",
+                                    "type": "TEXT"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "workqueue_commit_item_data",
+            "label": "Commit Item Data",
+            "description": "Aplica en la base los cambios staged de [Item Data] (en una sola transacci\u00f3n).",
+            "allowedAgentTargets": [
+                "WINDOWS"
+            ],
+            "minimumControlRoomVersion": "8750",
+            "minimumBotAgentVersion": "20.11",
+            "mainClass": "com.automationanywhere.botcommand.actions.workqueues.CommitItemDataChangesCommand",
+            "groupLabel": "Workqueues",
+            "icon": "workqueue.svg",
+            "returnType": "DICTIONARY",
+            "returnSubtype": "UNDEFINED",
+            "returnLabel": "Asignar metadatos del item a",
+            "returnRequired": false,
+            "attributes": [
+                {
+                    "name": "filePath",
+                    "label": "Path to file Access",
+                    "type": "FILE",
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        }
+                    ]
+                },
+                {
+                    "name": "identifyBy",
+                    "label": "Select item by",
+                    "type": "SELECT",
+                    "defaultValue": {
+                        "string": "id",
+                        "type": "STRING"
+                    },
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        }
+                    ],
+                    "options": [
+                        {
+                            "label": "By Id",
+                            "value": "id",
+                            "attributes": [
+                                {
+                                    "name": "itemId",
+                                    "label": "Item Id (workqueue.Id)",
+                                    "type": "NUMBER"
+                                }
+                            ]
+                        },
+                        {
+                            "label": "By Key",
+                            "value": "key",
+                            "attributes": [
+                                {
+                                    "name": "itemKey",
+                                    "label": "Item Key (workqueue.Key)",
+                                    "type": "TEXT"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "workqueue_complete_item",
+            "label": "Complete Work Item",
+            "description": "Marca un item como Completed",
+            "allowedAgentTargets": [
+                "WINDOWS"
+            ],
+            "minimumControlRoomVersion": "8750",
+            "minimumBotAgentVersion": "20.11",
+            "mainClass": "com.automationanywhere.botcommand.actions.workqueues.CompleteWorkItemCommand",
+            "groupLabel": "Workqueues",
+            "icon": "workqueue.svg",
+            "returns": [
+                {
+                    "type": "UNDEFINED",
+                    "subtype": "ANY"
+                }
+            ],
+            "attributes": [
+                {
+                    "name": "filePath",
+                    "label": "Path to file Access",
+                    "type": "FILE",
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        }
+                    ]
+                },
+                {
+                    "name": "identifyBy",
+                    "label": "Select item by",
+                    "type": "SELECT",
+                    "defaultValue": {
+                        "string": "id",
+                        "type": "STRING"
+                    },
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        },
+                        {
+                            "name": "SELECT_MODES"
+                        }
+                    ],
+                    "options": [
+                        {
+                            "label": "By Id",
+                            "value": "id",
+                            "attributes": [
+                                {
+                                    "name": "itemId",
+                                    "label": "Item Id (workqueue.Id)",
+                                    "type": "NUMBER",
+                                    "rules": [
+                                        {
+                                            "name": "NOT_EMPTY"
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "label": "By Key",
+                            "value": "key",
+                            "attributes": [
+                                {
+                                    "name": "itemKey",
+                                    "label": "Item Key (workqueue.Key)",
+                                    "type": "TEXT",
+                                    "rules": [
+                                        {
+                                            "name": "NOT_EMPTY"
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "workqueue_defer_item",
+            "label": "Defer Work Item",
+            "description": "Difiere un \u00edtem hasta una fecha/hora (Status queda en Pending)",
+            "allowedAgentTargets": [
+                "WINDOWS"
+            ],
+            "minimumControlRoomVersion": "8750",
+            "minimumBotAgentVersion": "20.11",
+            "mainClass": "com.automationanywhere.botcommand.actions.workqueues.DeferWorkItemCommand",
+            "groupLabel": "Workqueues",
+            "icon": "workqueue.svg",
+            "returns": [
+                {
+                    "type": "UNDEFINED",
+                    "subtype": "ANY"
+                }
+            ],
+            "attributes": [
+                {
+                    "name": "filePath",
+                    "label": "Path to file Access",
+                    "type": "FILE",
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        }
+                    ]
+                },
+                {
+                    "name": "identifyBy",
+                    "label": "Select item by",
+                    "type": "SELECT",
+                    "defaultValue": {
+                        "string": "id",
+                        "type": "STRING"
+                    },
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        }
+                    ],
+                    "options": [
+                        {
+                            "label": "By Id",
+                            "value": "id",
+                            "attributes": [
+                                {
+                                    "name": "itemId",
+                                    "label": "Item Id (workqueue.Id)",
+                                    "type": "NUMBER",
+                                    "rules": [
+                                        {
+                                            "name": "NOT_EMPTY"
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "label": "By Key",
+                            "value": "key",
+                            "attributes": [
+                                {
+                                    "name": "itemKey",
+                                    "label": "Item Key (workqueue.Key)",
+                                    "type": "TEXT",
+                                    "rules": [
+                                        {
+                                            "name": "NOT_EMPTY"
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "name": "selectBy",
+                    "label": "Defer item by",
+                    "type": "SELECT",
+                    "defaultValue": {
+                        "string": "date",
+                        "type": "STRING"
+                    },
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        }
+                    ],
+                    "options": [
+                        {
+                            "label": "By date",
+                            "value": "date",
+                            "attributes": [
+                                {
+                                    "name": "deferUntil",
+                                    "label": "Defer Until",
+                                    "type": "DATETIME",
+                                    "rules": [
+                                        {
+                                            "name": "NOT_EMPTY"
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "label": "By offset",
+                            "value": "offset",
+                            "attributes": [
+                                {
+                                    "name": "deferOffset",
+                                    "label": "Offset in minutes",
+                                    "type": "NUMBER",
+                                    "rules": [
+                                        {
+                                            "name": "NOT_EMPTY"
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "workqueue_get_item_data",
+            "label": "Get Item Data",
+            "description": "Obtiene el diccionario de datos (Key/Value) del \u00edtem",
+            "allowedAgentTargets": [
+                "WINDOWS"
+            ],
+            "minimumControlRoomVersion": "8750",
+            "minimumBotAgentVersion": "20.11",
+            "mainClass": "com.automationanywhere.botcommand.actions.workqueues.GetItemDataCommand",
+            "groupLabel": "Workqueues",
+            "icon": "workqueue.svg",
+            "returnType": "DICTIONARY",
+            "returnSubtype": "UNDEFINED",
+            "returnLabel": "Asignar a",
+            "returnRequired": true,
+            "attributes": [
+                {
+                    "name": "filePath",
+                    "label": "Path to file Access",
+                    "type": "FILE",
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        }
+                    ]
+                },
+                {
+                    "name": "identifyBy",
+                    "label": "Select item by",
+                    "type": "SELECT",
+                    "defaultValue": {
+                        "string": "id",
+                        "type": "STRING"
+                    },
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        }
+                    ],
+                    "options": [
+                        {
+                            "label": "By Id",
+                            "value": "id",
+                            "attributes": [
+                                {
+                                    "name": "itemId",
+                                    "label": "Item Id (workqueue.Id)",
+                                    "type": "NUMBER",
+                                    "rules": [
+                                        {
+                                            "name": "NOT_EMPTY"
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "label": "By Key",
+                            "value": "key",
+                            "attributes": [
+                                {
+                                    "name": "itemKey",
+                                    "label": "Item Key (workqueue.Key)",
+                                    "type": "TEXT",
+                                    "rules": [
+                                        {
+                                            "name": "NOT_EMPTY"
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "workqueue_get_last_item",
+            "label": "Get Last Item",
+            "description": "Get the most recently created item (any status) without modifying it",
+            "allowedAgentTargets": [
+                "WINDOWS"
+            ],
+            "minimumControlRoomVersion": "8750",
+            "minimumBotAgentVersion": "20.11",
+            "mainClass": "com.automationanywhere.botcommand.actions.workqueues.GetLastItemCommand",
+            "groupLabel": "Workqueues",
+            "icon": "workqueue.svg",
+            "returnType": "DICTIONARY",
+            "returnSubtype": "UNDEFINED",
+            "returnLabel": "Assign item to",
+            "returnRequired": true,
+            "attributes": [
+                {
+                    "name": "filePath",
+                    "label": "Path to file Access",
+                    "type": "FILE",
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "workqueue_get_next_item",
+            "label": "Get Next Item",
+            "description": "Get next 'Pending' item and check it as 'Working'",
+            "allowedAgentTargets": [
+                "WINDOWS"
+            ],
+            "minimumControlRoomVersion": "8750",
+            "minimumBotAgentVersion": "20.11",
+            "mainClass": "com.automationanywhere.botcommand.actions.workqueues.GetNextItemCommand",
+            "groupLabel": "Workqueues",
+            "icon": "workqueue.svg",
+            "returnType": "DICTIONARY",
+            "returnSubtype": "UNDEFINED",
+            "returnLabel": "Assign item to",
+            "returnRequired": true,
+            "attributes": [
+                {
+                    "name": "filePath",
+                    "label": "Path to file Access",
+                    "type": "FILE",
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "workqueue_purge_before_date",
+            "label": "Maintain Queue",
+            "description": "Elimina \u00edtems con [Created Date] anterior a la fecha indicada, incluyendo su [Item Data].",
+            "allowedAgentTargets": [
+                "WINDOWS"
+            ],
+            "minimumControlRoomVersion": "8750",
+            "minimumBotAgentVersion": "20.11",
+            "mainClass": "com.automationanywhere.botcommand.actions.workqueues.MaintainQueueCommand",
+            "groupLabel": "Workqueues",
+            "icon": "workqueue.svg",
+            "returns": [
+                {
+                    "type": "UNDEFINED",
+                    "subtype": "ANY"
+                }
+            ],
+            "attributes": [
+                {
+                    "name": "filePath",
+                    "label": "Path to file Access",
+                    "type": "FILE",
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        }
+                    ]
+                },
+                {
+                    "name": "cutoffDate",
+                    "label": "Fecha umbral",
+                    "description": "Se eliminar\u00e1n \u00edtems con [Created Date] estrictamente menor a esta",
+                    "type": "DATETIME",
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "workqueue_release_item",
+            "label": "Release Work Item",
+            "description": "Libera un item WORKING a PENDING (por Id o Key).",
+            "allowedAgentTargets": [
+                "WINDOWS"
+            ],
+            "minimumControlRoomVersion": "8750",
+            "minimumBotAgentVersion": "20.11",
+            "mainClass": "com.automationanywhere.botcommand.actions.workqueues.ReleaseWorkItemCommand",
+            "groupLabel": "Workqueues",
+            "icon": "workqueue.svg",
+            "returns": [
+                {
+                    "type": "UNDEFINED",
+                    "subtype": "ANY"
+                }
+            ],
+            "attributes": [
+                {
+                    "name": "filePath",
+                    "label": "Path to file Access",
+                    "type": "FILE",
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        }
+                    ]
+                },
+                {
+                    "name": "identifyBy",
+                    "label": "Select item by",
+                    "type": "SELECT",
+                    "defaultValue": {
+                        "string": "id",
+                        "type": "STRING"
+                    },
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        }
+                    ],
+                    "options": [
+                        {
+                            "label": "By Id",
+                            "value": "id",
+                            "attributes": [
+                                {
+                                    "name": "itemId",
+                                    "label": "Item Id",
+                                    "type": "NUMBER",
+                                    "rules": [
+                                        {
+                                            "name": "NOT_EMPTY"
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "label": "By Key",
+                            "value": "key",
+                            "attributes": [
+                                {
+                                    "name": "itemKey",
+                                    "label": "Item Key",
+                                    "type": "TEXT",
+                                    "rules": [
+                                        {
+                                            "name": "NOT_EMPTY"
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "workqueue_set_item_status",
+            "label": "Set Item Status",
+            "description": "Actualiza StatusWorkflow y StepWorkflow de un \u00edtem en estado WORKING.",
+            "allowedAgentTargets": [
+                "WINDOWS"
+            ],
+            "minimumControlRoomVersion": "8750",
+            "minimumBotAgentVersion": "20.11",
+            "mainClass": "com.automationanywhere.botcommand.actions.workqueues.SetItemStatusCommand",
+            "groupLabel": "Workqueues",
+            "icon": "workqueue.svg",
+            "returnType": "DICTIONARY",
+            "returnSubtype": "UNDEFINED",
+            "returnLabel": "Asignar metadatos del item a",
+            "returnRequired": true,
+            "attributes": [
+                {
+                    "name": "filePath",
+                    "label": "Path to file Access",
+                    "type": "FILE",
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        }
+                    ]
+                },
+                {
+                    "name": "identifyBy",
+                    "label": "Select item by",
+                    "type": "SELECT",
+                    "defaultValue": {
+                        "string": "id",
+                        "type": "STRING"
+                    },
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        }
+                    ],
+                    "options": [
+                        {
+                            "label": "By Id",
+                            "value": "id",
+                            "attributes": [
+                                {
+                                    "name": "itemId",
+                                    "label": "Item Id (workqueue.Id)",
+                                    "type": "NUMBER",
+                                    "rules": [
+                                        {
+                                            "name": "NOT_EMPTY"
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "label": "By Key",
+                            "value": "key",
+                            "attributes": [
+                                {
+                                    "name": "itemKey",
+                                    "label": "Item Key (workqueue.Key)",
+                                    "type": "TEXT",
+                                    "rules": [
+                                        {
+                                            "name": "NOT_EMPTY"
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "name": "statusWorkflow",
+                    "label": "Status Workflow",
+                    "type": "NUMBER",
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        }
+                    ]
+                },
+                {
+                    "name": "stepWorkflow",
+                    "label": "Step Workflow",
+                    "type": "TEXT",
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "workqueue_set_item_exception",
+            "label": "Set Work Item Exception",
+            "description": "Marca un item como Exception con raz\u00f3n",
+            "allowedAgentTargets": [
+                "WINDOWS"
+            ],
+            "minimumControlRoomVersion": "8750",
+            "minimumBotAgentVersion": "20.11",
+            "mainClass": "com.automationanywhere.botcommand.actions.workqueues.SetWorkItemExceptionCommand",
+            "groupLabel": "Workqueues",
+            "icon": "workqueue.svg",
+            "returns": [
+                {
+                    "type": "UNDEFINED",
+                    "subtype": "ANY"
+                }
+            ],
+            "attributes": [
+                {
+                    "name": "filePath",
+                    "label": "Path to file Access",
+                    "type": "FILE",
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        }
+                    ]
+                },
+                {
+                    "name": "identifyBy",
+                    "label": "Identify item by",
+                    "type": "SELECT",
+                    "defaultValue": {
+                        "string": "id",
+                        "type": "STRING"
+                    },
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        },
+                        {
+                            "name": "SELECT_MODES"
+                        }
+                    ],
+                    "options": [
+                        {
+                            "label": "By Id",
+                            "value": "id",
+                            "attributes": [
+                                {
+                                    "name": "itemId",
+                                    "label": "Item Id (workqueue.Id)",
+                                    "type": "NUMBER",
+                                    "rules": [
+                                        {
+                                            "name": "NOT_EMPTY"
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "label": "By Key",
+                            "value": "key",
+                            "attributes": [
+                                {
+                                    "name": "itemKey",
+                                    "label": "Item Key (workqueue.Key)",
+                                    "type": "TEXT",
+                                    "rules": [
+                                        {
+                                            "name": "NOT_EMPTY"
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "name": "reason",
+                    "label": "Exception Reason",
+                    "type": "TEXT",
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "workqueue_upsert_item_data_field",
+            "label": "Upsert Item Data Field",
+            "description": "Actualiza el valor de un campo en [Item Data]. Si no existe, lo crea (staging, requiere Commit).",
+            "allowedAgentTargets": [
+                "WINDOWS"
+            ],
+            "minimumControlRoomVersion": "8750",
+            "minimumBotAgentVersion": "20.11",
+            "mainClass": "com.automationanywhere.botcommand.actions.workqueues.UpsertItemDataFieldCommand",
+            "groupLabel": "Workqueues",
+            "icon": "workqueue.svg",
+            "returnType": "DICTIONARY",
+            "returnSubtype": "UNDEFINED",
+            "returnLabel": "Asignar metadatos del item a",
+            "returnRequired": false,
+            "attributes": [
+                {
+                    "name": "filePath",
+                    "label": "Path to file Access",
+                    "type": "FILE",
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        }
+                    ]
+                },
+                {
+                    "name": "identifyBy",
+                    "label": "Select item by",
+                    "type": "SELECT",
+                    "defaultValue": {
+                        "string": "id",
+                        "type": "STRING"
+                    },
+                    "options": [
+                        {
+                            "label": "By Id",
+                            "value": "id",
+                            "attributes": [
+                                {
+                                    "name": "itemId",
+                                    "label": "Item Id (workqueue.Id)",
+                                    "type": "NUMBER"
+                                }
+                            ]
+                        },
+                        {
+                            "label": "By Key",
+                            "value": "key",
+                            "attributes": [
+                                {
+                                    "name": "itemKey",
+                                    "label": "Item Key (workqueue.Key)",
+                                    "type": "TEXT"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "name": "dataKey",
+                    "label": "Data Key ([Item Data].[Key])",
+                    "type": "TEXT",
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        }
+                    ]
+                },
+                {
+                    "name": "dataValue",
+                    "label": "Data Value ([Item Data].[Value])",
+                    "type": "TEXT",
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        }
+                    ]
+                }
+            ]
+        }
+    ],
+    "conditionals": [
+        {
+            "name": "KeyNotExists",
+            "label": "Diccionario: clave NO existe",
+            "description": "Retorna TRUE si la clave no existe en el diccionario.",
+            "nodeLabel": "{{dictionary}} no contiene la clave {{key}}",
+            "allowedAgentTargets": [
+                "WINDOWS"
+            ],
+            "minimumControlRoomVersion": "8750",
+            "minimumBotAgentVersion": "20.11",
+            "mainClass": "com.automationanywhere.botcommand.conditional.KeyNotExistsConditionCondition",
+            "attributes": [
+                {
+                    "name": "dictionary",
+                    "label": "Diccionario",
+                    "type": "DICTIONARY",
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        }
+                    ]
+                },
+                {
+                    "name": "key",
+                    "label": "Clave",
+                    "type": "TEXT",
+                    "rules": [
+                        {
+                            "name": "NOT_EMPTY"
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

@@ -1,0 +1,52 @@
+BOT FRAMEWORK: RAMA DEVELOP RECUPERADA
+
+Esta rama parte de origin/main fd8a8e4 y recupera las clases del paquete
+A360EntaBotFramework-1.0.2-20260925-171647.jar. El inventario conserva su SHA-256.
+Las fuentes decompiladas con CFR 0.152 fueron corregidas para compilar con Java 11.
+
+VERSION ACTUAL: 1.0.3
+El build agrega fecha y hora de Buenos Aires al identificador de versión.
+Para generar exactamente el mismo identificador se puede indicar:
+  ./gradlew clean build -PpackageVersion=1.0.3-AAAAMMDD-HHMMSS
+
+REQUISITOS Y BUILD
+- JDK 11, con JAVA_HOME apuntando a esa instalación.
+- ./gradlew clean build (Linux) o gradlew.bat clean build (Windows).
+- El wrapper descarga Gradle 7.6.2 una vez; el build no usa repositorios Maven.
+- La salida para importar en Control Room está en build/libs/.
+- smokeTest ejecuta 20 comprobaciones sobre el JAR empaquetado.
+- verifyPackage comprueba las 89 clases, los recursos y los 32 comandos.
+
+DEPENDENCIAS Y GENERACIÓN
+libs/recovery-dependencies-1.0.2.jar conserva las dependencias que estaban
+empaquetadas en el build perdido, sin las clases propias ni sus recursos.
+Su hash consta en dependencies.sha256. Esto conserva, entre otras cosas,
+la reubicación existente de commons-io y los archivos de servicios JDBC.
+Los SDK de Automation Anywhere se usan para compilar y ejecutar las pruebas;
+no se incluyen de nuevo en el paquete final.
+
+Se conservan en src/main/java los adaptadores *Command y la condición generada.
+src/main/resources/package.json conserva parámetros, validaciones y metadatos
+del paquete perdido. processResources actualiza únicamente sus dos versiones.
+No se activa command-codegen: las anotaciones originales que solo existían
+en el código fuente no estaban en el JAR. build-original.gradle.txt conserva
+la configuración previa como referencia; no es el build activo.
+
+Para cambiar lógica manteniendo las firmas, editar las clases de acción.
+Para añadir acciones o cambiar parámetros, actualizar también el adaptador
+y package.json, o restaurar antes el flujo de anotaciones del SDK.
+package.template queda como referencia del remoto y no entra al paquete.
+
+TESTS DEL REMOTO
+Los tests anteriores y sus datos se preservan sin cambios en src/legacyTest.
+No se ejecutan en este build de recuperación: pertenecen al código anterior
+y algunos dependen de procesos, rutas y comportamiento de Windows.
+Las comprobaciones activas están en src/test/java/RecoverySmoke.java.
+No se afirma que los tests archivados hayan pasado.
+
+PRUEBA EN AUTOMATION ANYWHERE
+Importar el JAR de build/libs como versión nueva del paquete existente en un
+entorno de prueba. Actualizar un bot de prueba a esa versión y verificar las
+acciones utilizadas, especialmente Access/workqueues, archivos y logging.
+Este build no publica paquetes ni cambia bots en Control Room automáticamente.
+La compilación y las pruebas locales no sustituyen esa validación.

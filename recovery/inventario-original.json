@@ -1,0 +1,289 @@
+{
+  "originalJar": "A360EntaBotFramework-1.0.2-20260925-171647.jar",
+  "sha256": "3390bea54b573c3c8a3eb2f317e857e3a057fafee6d8004aee7b2ab3b2938df4",
+  "version": "1.0.2-20260925-171647",
+  "commands": [
+    {
+      "name": "config_read_excel",
+      "label": "Read Excel Config",
+      "mainClass": "com.automationanywhere.botcommand.actions.config.ExcelReaderCommand"
+    },
+    {
+      "name": "config_read_json",
+      "label": "Read JSON",
+      "mainClass": "com.automationanywhere.botcommand.actions.config.JSONReaderCommand"
+    },
+    {
+      "name": "file_to_base64",
+      "label": "File → Base64",
+      "mainClass": "com.automationanywhere.botcommand.actions.conversion.FileToBase64Command"
+    },
+    {
+      "name": "reformat_number_string",
+      "label": "Formatear Número (String)",
+      "mainClass": "com.automationanywhere.botcommand.actions.conversion.ReformatNumberStringCommand"
+    },
+    {
+      "name": "string_to_number_smart",
+      "label": "String → Number",
+      "mainClass": "com.automationanywhere.botcommand.actions.conversion.StringToNumberSmartCommand"
+    },
+    {
+      "name": "device_close_application",
+      "label": "Close Applications",
+      "mainClass": "com.automationanywhere.botcommand.actions.device.CloseApplicationsCommand"
+    },
+    {
+      "name": "device_copy_file",
+      "label": "Copy File",
+      "mainClass": "com.automationanywhere.botcommand.actions.device.CopyFileCommand"
+    },
+    {
+      "name": "device_copy_folder",
+      "label": "Copy Folder",
+      "mainClass": "com.automationanywhere.botcommand.actions.device.CopyFolderCommand"
+    },
+    {
+      "name": "device_create_folders",
+      "label": "Create Folders",
+      "mainClass": "com.automationanywhere.botcommand.actions.device.CreateFoldersCommand"
+    },
+    {
+      "name": "device_delete_files_folders",
+      "label": "Clean Directory",
+      "mainClass": "com.automationanywhere.botcommand.actions.device.DeleteFilesFoldersCommand"
+    },
+    {
+      "name": "documentation_about",
+      "label": "About",
+      "mainClass": "com.automationanywhere.botcommand.actions.documentation.AboutCommand"
+    },
+    {
+      "name": "documentation_caution_sequence",
+      "label": "Caution Steps",
+      "mainClass": "com.automationanywhere.botcommand.actions.documentation.CautionSequenceCommand"
+    },
+    {
+      "name": "documentation_comment",
+      "label": "Comment",
+      "mainClass": "com.automationanywhere.botcommand.actions.documentation.CommentCommand"
+    },
+    {
+      "name": "documentation_sequence",
+      "label": "Steps",
+      "mainClass": "com.automationanywhere.botcommand.actions.documentation.SequenceCommand"
+    },
+    {
+      "name": "list_add_item_advanced",
+      "label": "Add Item",
+      "mainClass": "com.automationanywhere.botcommand.actions.list.AddItemAdvancedCommand"
+    },
+    {
+      "name": "list_remove_duplicates_trim",
+      "label": "Remove Duplicates",
+      "mainClass": "com.automationanywhere.botcommand.actions.list.RemoveDuplicatesFromListCommand"
+    },
+    {
+      "name": "log_message",
+      "label": "Log Message",
+      "mainClass": "com.automationanywhere.botcommand.actions.logs.LogMessageCommand"
+    },
+    {
+      "name": "logs_start_session",
+      "label": "Start Logger Session",
+      "mainClass": "com.automationanywhere.botcommand.actions.logs.StartLoggerSessionCommand"
+    },
+    {
+      "name": "logs_stop_session",
+      "label": "Stop Logger Session",
+      "mainClass": "com.automationanywhere.botcommand.actions.logs.StopLoggerSessionCommand"
+    },
+    {
+      "name": "workqueue_add_item_data_field",
+      "label": "Add Item Data Field",
+      "mainClass": "com.automationanywhere.botcommand.actions.workqueues.AddItemDataFieldCommand"
+    },
+    {
+      "name": "workqueue_cancel_item_data",
+      "label": "Cancel Item Data",
+      "mainClass": "com.automationanywhere.botcommand.actions.workqueues.CancelItemDataChangesCommand"
+    },
+    {
+      "name": "workqueue_commit_item_data",
+      "label": "Commit Item Data",
+      "mainClass": "com.automationanywhere.botcommand.actions.workqueues.CommitItemDataChangesCommand"
+    },
+    {
+      "name": "workqueue_complete_item",
+      "label": "Complete Work Item",
+      "mainClass": "com.automationanywhere.botcommand.actions.workqueues.CompleteWorkItemCommand"
+    },
+    {
+      "name": "workqueue_defer_item",
+      "label": "Defer Work Item",
+      "mainClass": "com.automationanywhere.botcommand.actions.workqueues.DeferWorkItemCommand"
+    },
+    {
+      "name": "workqueue_get_item_data",
+      "label": "Get Item Data",
+      "mainClass": "com.automationanywhere.botcommand.actions.workqueues.GetItemDataCommand"
+    },
+    {
+      "name": "workqueue_get_last_item",
+      "label": "Get Last Item",
+      "mainClass": "com.automationanywhere.botcommand.actions.workqueues.GetLastItemCommand"
+    },
+    {
+      "name": "workqueue_get_next_item",
+      "label": "Get Next Item",
+      "mainClass": "com.automationanywhere.botcommand.actions.workqueues.GetNextItemCommand"
+    },
+    {
+      "name": "workqueue_purge_before_date",
+      "label": "Maintain Queue",
+      "mainClass": "com.automationanywhere.botcommand.actions.workqueues.MaintainQueueCommand"
+    },
+    {
+      "name": "workqueue_release_item",
+      "label": "Release Work Item",
+      "mainClass": "com.automationanywhere.botcommand.actions.workqueues.ReleaseWorkItemCommand"
+    },
+    {
+      "name": "workqueue_set_item_status",
+      "label": "Set Item Status",
+      "mainClass": "com.automationanywhere.botcommand.actions.workqueues.SetItemStatusCommand"
+    },
+    {
+      "name": "workqueue_set_item_exception",
+      "label": "Set Work Item Exception",
+      "mainClass": "com.automationanywhere.botcommand.actions.workqueues.SetWorkItemExceptionCommand"
+    },
+    {
+      "name": "workqueue_upsert_item_data_field",
+      "label": "Upsert Item Data Field",
+      "mainClass": "com.automationanywhere.botcommand.actions.workqueues.UpsertItemDataFieldCommand"
+    }
+  ],
+  "conditions": [],
+  "compiledClasses": [
+    "com/automationanywhere/botcommand/actions/config/ExcelReader.class",
+    "com/automationanywhere/botcommand/actions/config/ExcelReaderCommand.class",
+    "com/automationanywhere/botcommand/actions/config/JSONReader.class",
+    "com/automationanywhere/botcommand/actions/config/JSONReaderCommand.class",
+    "com/automationanywhere/botcommand/actions/conversion/FileToBase64.class",
+    "com/automationanywhere/botcommand/actions/conversion/FileToBase64Command.class",
+    "com/automationanywhere/botcommand/actions/conversion/ReformatNumberString.class",
+    "com/automationanywhere/botcommand/actions/conversion/ReformatNumberStringCommand.class",
+    "com/automationanywhere/botcommand/actions/conversion/StringToNumberSmart.class",
+    "com/automationanywhere/botcommand/actions/conversion/StringToNumberSmartCommand.class",
+    "com/automationanywhere/botcommand/actions/device/CloseApplications.class",
+    "com/automationanywhere/botcommand/actions/device/CloseApplicationsCommand.class",
+    "com/automationanywhere/botcommand/actions/device/CopyFile.class",
+    "com/automationanywhere/botcommand/actions/device/CopyFileCommand.class",
+    "com/automationanywhere/botcommand/actions/device/CopyFolder.class",
+    "com/automationanywhere/botcommand/actions/device/CopyFolderCommand.class",
+    "com/automationanywhere/botcommand/actions/device/CreateFolders.class",
+    "com/automationanywhere/botcommand/actions/device/CreateFoldersCommand.class",
+    "com/automationanywhere/botcommand/actions/device/DeleteFilesFolders$DeletionProcessor.class",
+    "com/automationanywhere/botcommand/actions/device/DeleteFilesFolders$FileCollector.class",
+    "com/automationanywhere/botcommand/actions/device/DeleteFilesFolders.class",
+    "com/automationanywhere/botcommand/actions/device/DeleteFilesFoldersCommand.class",
+    "com/automationanywhere/botcommand/actions/documentation/About.class",
+    "com/automationanywhere/botcommand/actions/documentation/AboutCommand.class",
+    "com/automationanywhere/botcommand/actions/documentation/CautionSequence.class",
+    "com/automationanywhere/botcommand/actions/documentation/CautionSequenceCommand.class",
+    "com/automationanywhere/botcommand/actions/documentation/Comment.class",
+    "com/automationanywhere/botcommand/actions/documentation/CommentCommand.class",
+    "com/automationanywhere/botcommand/actions/documentation/Sequence.class",
+    "com/automationanywhere/botcommand/actions/documentation/SequenceCommand.class",
+    "com/automationanywhere/botcommand/actions/list/AddItemAdvanced.class",
+    "com/automationanywhere/botcommand/actions/list/AddItemAdvancedCommand.class",
+    "com/automationanywhere/botcommand/actions/list/RemoveDuplicatesFromList.class",
+    "com/automationanywhere/botcommand/actions/list/RemoveDuplicatesFromListCommand.class",
+    "com/automationanywhere/botcommand/actions/logs/LogMessage.class",
+    "com/automationanywhere/botcommand/actions/logs/LogMessageCommand.class",
+    "com/automationanywhere/botcommand/actions/logs/StartLoggerSession.class",
+    "com/automationanywhere/botcommand/actions/logs/StartLoggerSessionCommand.class",
+    "com/automationanywhere/botcommand/actions/logs/StopLoggerSession.class",
+    "com/automationanywhere/botcommand/actions/logs/StopLoggerSessionCommand.class",
+    "com/automationanywhere/botcommand/actions/workqueues/AddItemDataField.class",
+    "com/automationanywhere/botcommand/actions/workqueues/AddItemDataFieldCommand.class",
+    "com/automationanywhere/botcommand/actions/workqueues/CancelItemDataChanges.class",
+    "com/automationanywhere/botcommand/actions/workqueues/CancelItemDataChangesCommand.class",
+    "com/automationanywhere/botcommand/actions/workqueues/CommitItemDataChanges.class",
+    "com/automationanywhere/botcommand/actions/workqueues/CommitItemDataChangesCommand.class",
+    "com/automationanywhere/botcommand/actions/workqueues/CompleteWorkItem.class",
+    "com/automationanywhere/botcommand/actions/workqueues/CompleteWorkItemCommand.class",
+    "com/automationanywhere/botcommand/actions/workqueues/DeferWorkItem.class",
+    "com/automationanywhere/botcommand/actions/workqueues/DeferWorkItemCommand.class",
+    "com/automationanywhere/botcommand/actions/workqueues/GetItemData.class",
+    "com/automationanywhere/botcommand/actions/workqueues/GetItemDataCommand.class",
+    "com/automationanywhere/botcommand/actions/workqueues/GetLastItem.class",
+    "com/automationanywhere/botcommand/actions/workqueues/GetLastItemCommand.class",
+    "com/automationanywhere/botcommand/actions/workqueues/GetNextItem.class",
+    "com/automationanywhere/botcommand/actions/workqueues/GetNextItemCommand.class",
+    "com/automationanywhere/botcommand/actions/workqueues/MaintainQueue.class",
+    "com/automationanywhere/botcommand/actions/workqueues/MaintainQueueCommand.class",
+    "com/automationanywhere/botcommand/actions/workqueues/ReleaseWorkItem.class",
+    "com/automationanywhere/botcommand/actions/workqueues/ReleaseWorkItemCommand.class",
+    "com/automationanywhere/botcommand/actions/workqueues/SetItemStatus.class",
+    "com/automationanywhere/botcommand/actions/workqueues/SetItemStatusCommand.class",
+    "com/automationanywhere/botcommand/actions/workqueues/SetWorkItemException.class",
+    "com/automationanywhere/botcommand/actions/workqueues/SetWorkItemExceptionCommand.class",
+    "com/automationanywhere/botcommand/actions/workqueues/UpsertItemDataField.class",
+    "com/automationanywhere/botcommand/actions/workqueues/UpsertItemDataFieldCommand.class",
+    "com/automationanywhere/botcommand/conditional/KeyNotExistsCondition.class",
+    "com/automationanywhere/botcommand/conditional/KeyNotExistsConditionCondition.class",
+    "com/automationanywhere/botcommand/utilities/file/FileValidator.class",
+    "com/automationanywhere/botcommand/utilities/logger/CustomHTMLLayout$Builder.class",
+    "com/automationanywhere/botcommand/utilities/logger/CustomHTMLLayout$Columns.class",
+    "com/automationanywhere/botcommand/utilities/logger/CustomHTMLLayout.class",
+    "com/automationanywhere/botcommand/utilities/logger/CustomLogger.class",
+    "com/automationanywhere/botcommand/utilities/logger/DataConversion.class",
+    "com/automationanywhere/botcommand/utilities/logger/HTMLGenerator.class",
+    "com/automationanywhere/botcommand/utilities/process/TaskKiller.class",
+    "com/automationanywhere/botcommand/utilities/screen/CaptureScreen.class",
+    "com/automationanywhere/botcommand/utilities/workqueue/AccessExecutor$SqlConsumer.class",
+    "com/automationanywhere/botcommand/utilities/workqueue/AccessExecutor$SqlFunction.class",
+    "com/automationanywhere/botcommand/utilities/workqueue/AccessExecutor.class",
+    "com/automationanywhere/botcommand/utilities/workqueue/Helpers.class",
+    "com/automationanywhere/botcommand/utilities/workqueue/ItemDataTxnBuffer$ScopeKey.class",
+    "com/automationanywhere/botcommand/utilities/workqueue/ItemDataTxnBuffer.class",
+    "com/automationanywhere/botcommand/utilities/workqueue/ItemIdentifierType.class",
+    "com/automationanywhere/botcommand/utilities/workqueue/WorkqueueItemDao$DeletedStats.class",
+    "com/automationanywhere/botcommand/utilities/workqueue/WorkqueueItemDao$ModState.class",
+    "com/automationanywhere/botcommand/utilities/workqueue/WorkqueueItemDao$WorkItem.class",
+    "com/automationanywhere/botcommand/utilities/workqueue/WorkqueueItemDao.class",
+    "com/automationanywhere/botcommand/utilities/workqueue/WorkqueueSession.class"
+  ],
+  "sourceClassCount": 46,
+  "classesWithoutSourceInRemote": [
+    "com/automationanywhere/botcommand/actions/conversion/FileToBase64.class",
+    "com/automationanywhere/botcommand/actions/list/AddItemAdvanced.class",
+    "com/automationanywhere/botcommand/actions/workqueues/GetLastItem.class",
+    "com/automationanywhere/botcommand/actions/workqueues/UpsertItemDataField.class"
+  ],
+  "extractedResources": [
+    "icons/about.svg",
+    "icons/caution.svg",
+    "icons/close.svg",
+    "icons/comment.svg",
+    "icons/conversion.svg",
+    "icons/create_folders.svg",
+    "icons/csv.svg",
+    "icons/delete_folders.svg",
+    "icons/excel.svg",
+    "icons/folders.svg",
+    "icons/json.svg",
+    "icons/list.svg",
+    "icons/log_message.svg",
+    "icons/log_session.svg",
+    "icons/sequence.svg",
+    "icons/workqueue.svg",
+    "icons/xml.svg",
+    "locales/en_US.json",
+    "package.json",
+    "templates/log.html",
+    "templates/variables.html"
+  ]
+}
