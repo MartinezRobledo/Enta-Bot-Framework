@@ -1,7 +1,6 @@
-/*
- * Decompiled with CFR 0.152.
- */
 package com.automationanywhere.botcommand.actions.workqueues;
+
+import java.sql.Connection;
 
 import com.automationanywhere.botcommand.data.Value;
 import com.automationanywhere.botcommand.data.impl.DictionaryValue;
@@ -9,12 +8,53 @@ import com.automationanywhere.botcommand.data.impl.StringValue;
 import com.automationanywhere.botcommand.exception.BotCommandException;
 import com.automationanywhere.botcommand.utilities.workqueue.AccessExecutor;
 import com.automationanywhere.botcommand.utilities.workqueue.WorkqueueItemDao;
-import java.sql.Connection;
+import com.automationanywhere.commandsdk.annotations.*;
+import com.automationanywhere.commandsdk.annotations.rules.NotEmpty;
+import com.automationanywhere.commandsdk.model.AttributeType;
+import com.automationanywhere.commandsdk.model.DataType;
+
+import java.sql.*;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+@BotCommand
+@CommandPkg(
+        label = "Get Item Data",
+        name = "workqueue_get_item_data",
+        description = "Obtiene el diccionario de datos (Key/Value) del ítem",
+        group_label = "Workqueues",
+        icon = "workqueue.svg",
+        return_type = DataType.DICTIONARY,
+        return_required = true,
+        return_label = "Asignar a"
+        //return_settings = {ReturnSettingsType.OUTPUT}
+)
 public class GetItemData {
-    public DictionaryValue get(String filePath, String identifyBy, Double itemId, String itemKey) {
+
+    @Execute
+    public DictionaryValue get(
+            @Idx(index = "1", type = AttributeType.FILE)
+            @NotEmpty
+            @Pkg(label = "Path to file Access") String filePath,
+
+            @Idx(index = "2", type = AttributeType.SELECT, options = {
+                    @Idx.Option(index = "2.1", pkg = @Pkg(label = "By Id",  value = "id")),
+                    @Idx.Option(index = "2.2", pkg = @Pkg(label = "By Key", value = "key"))
+            })
+            @Pkg(label = "Select item by", default_value = "id", default_value_type = DataType.STRING)
+            @NotEmpty
+            String identifyBy,
+
+            @Idx(index = "2.1.1", type = AttributeType.NUMBER)
+            @Pkg(label = "Item Id (workqueue.Id)")
+            @NotEmpty
+            Double itemId,
+
+            @Idx(index = "2.2.1", type = AttributeType.TEXT)
+            @Pkg(label = "Item Key (workqueue.Key)")
+            @NotEmpty
+            String itemKey
+    ) {
         try {
             return AccessExecutor.executeWithConnection(filePath, conn -> {
                 Map<String, String> rawDict;
@@ -30,7 +70,7 @@ public class GetItemData {
                     }
                     rawDict = dao.getItemDataByKey(itemKey);
                 } else {
-                    throw new BotCommandException("Valor inv\u00e1lido en 'Identificar \u00edtem por': " + identifyBy);
+                    throw new BotCommandException("Valor inválido en 'Identificar ítem por': " + identifyBy);
                 }
                 LinkedHashMap<String, Value> dict = new LinkedHashMap<String, Value>();
                 for (Map.Entry<String, String> entry : rawDict.entrySet()) {

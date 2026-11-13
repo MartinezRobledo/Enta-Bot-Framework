@@ -1,10 +1,18 @@
-/*
- * Decompiled with CFR 0.152.
- */
 package com.automationanywhere.botcommand.utilities.logger;
 
-import botframework.shaded.commons.io.IOUtils;
+import org.apache.commons.io.IOUtils;
 import com.automationanywhere.botcommand.utilities.logger.HTMLGenerator;
+
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.text.StringEscapeUtils;
+import org.apache.logging.log4j.core.Layout;
+import org.apache.logging.log4j.core.LogEvent;
+import org.apache.logging.log4j.core.config.Node;
+import org.apache.logging.log4j.core.config.plugins.Plugin;
+import org.apache.logging.log4j.core.config.plugins.PluginBuilderAttribute;
+import org.apache.logging.log4j.core.config.plugins.PluginBuilderFactory;
+import org.apache.logging.log4j.core.layout.AbstractStringLayout;
+
 import java.io.IOException;
 import java.net.InetAddress;
 import java.nio.charset.Charset;
@@ -13,22 +21,29 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
-import org.apache.commons.text.StringEscapeUtils;
-import org.apache.logging.log4j.core.LogEvent;
-import org.apache.logging.log4j.core.config.plugins.Plugin;
-import org.apache.logging.log4j.core.config.plugins.PluginBuilderAttribute;
-import org.apache.logging.log4j.core.config.plugins.PluginBuilderFactory;
-import org.apache.logging.log4j.core.layout.AbstractStringLayout;
 
-@Plugin(name="CustomHTMLLayout", category="Core", elementType="layout", printObject=true)
-public class CustomHTMLLayout
-extends AbstractStringLayout {
-    private static final byte[] footer = "".getBytes();
+
+@Plugin(name = "CustomHTMLLayout", category = Node.CATEGORY, elementType = Layout.ELEMENT_TYPE, printObject = true)
+public class CustomHTMLLayout extends AbstractStringLayout {
+    private static final byte[] footer = ("").getBytes();
     private static final String templatePath = "/templates/log.html";
     private static final byte[] header;
     private static final String machine;
     private static final String user;
-    SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MMM-dd HH:mm:ss Z");
+
+    static {
+        try {
+            header =
+                    IOUtils.toByteArray(Objects.requireNonNull(CustomHTMLLayout.class.getResourceAsStream(templatePath)));
+            machine = InetAddress.getLocalHost().getHostName();
+            user = System.getProperty("user.name");
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MMM-dd HH:mm:ss Z"); // Define your desired date and
+    // time format
 
     public CustomHTMLLayout(Charset charset) {
         super(charset);
@@ -78,27 +93,8 @@ extends AbstractStringLayout {
         return header;
     }
 
-    static {
-        try {
-            header = IOUtils.toByteArray(Objects.requireNonNull(CustomHTMLLayout.class.getResourceAsStream(templatePath)));
-            machine = InetAddress.getLocalHost().getHostName();
-            user = System.getProperty("user.name");
-        }
-        catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
+    public static class Builder implements org.apache.logging.log4j.core.util.Builder<CustomHTMLLayout> {
 
-    public static class Columns {
-        public static final String SOURCE = "Source";
-        public static final String MESSAGE = "Message";
-        public static final String VARIABLES = "Variables";
-        public static final String SCREENSHOT = "Screenshot";
-        public static final String VARIABLES_FOLDER_PATH = "variablesFolderPath";
-    }
-
-    public static class Builder
-    implements org.apache.logging.log4j.core.util.Builder<CustomHTMLLayout> {
         @PluginBuilderAttribute
         private Charset charset;
 
@@ -114,5 +110,13 @@ extends AbstractStringLayout {
         public CustomHTMLLayout build() {
             return new CustomHTMLLayout(this.charset);
         }
+    }
+
+    public static class Columns {
+        public static final String SOURCE = "Source";
+        public static final String MESSAGE = "Message";
+        public static final String VARIABLES = "Variables";
+        public static final String SCREENSHOT = "Screenshot";
+        public static final String VARIABLES_FOLDER_PATH = "variablesFolderPath";
     }
 }

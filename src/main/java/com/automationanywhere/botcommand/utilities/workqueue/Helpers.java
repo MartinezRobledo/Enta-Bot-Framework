@@ -1,18 +1,18 @@
-/*
- * Decompiled with CFR 0.152.
- */
 package com.automationanywhere.botcommand.utilities.workqueue;
+
+import com.automationanywhere.botcommand.utilities.workqueue.WorkqueueItemDao;
 
 import com.automationanywhere.botcommand.data.Value;
 import com.automationanywhere.botcommand.data.impl.DictionaryValue;
 import com.automationanywhere.botcommand.data.impl.NumberValue;
 import com.automationanywhere.botcommand.data.impl.StringValue;
-import com.automationanywhere.botcommand.utilities.workqueue.WorkqueueItemDao;
+
 import java.math.BigDecimal;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class Helpers {
+
     public static DictionaryValue toDictionary(WorkqueueItemDao.WorkItem item) {
         LinkedHashMap<String, Value> root = new LinkedHashMap<String, Value>();
         root.put("Id", new NumberValue(BigDecimal.valueOf(item.id)));

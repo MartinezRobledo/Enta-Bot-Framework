@@ -1,28 +1,82 @@
-/*
- * Decompiled with CFR 0.152.
- */
 package com.automationanywhere.botcommand.actions.workqueues;
+
+import java.sql.Connection;
+import java.time.ZonedDateTime;
 
 import com.automationanywhere.botcommand.exception.BotCommandException;
 import com.automationanywhere.botcommand.utilities.workqueue.AccessExecutor;
 import com.automationanywhere.botcommand.utilities.workqueue.WorkqueueItemDao;
-import java.sql.Connection;
+import com.automationanywhere.commandsdk.annotations.*;
+import com.automationanywhere.commandsdk.annotations.rules.NotEmpty;
+import com.automationanywhere.commandsdk.model.AttributeType;
+import com.automationanywhere.commandsdk.model.DataType;
+
 import java.sql.Timestamp;
 import java.time.Instant;
-import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 
+
+@BotCommand
+@CommandPkg(
+        label = "Defer Work Item",
+        name = "workqueue_defer_item",
+        description = "Difiere un ítem hasta una fecha/hora (Status queda en Pending)",
+        group_label = "Workqueues",
+        icon = "workqueue.svg"
+)
 public class DeferWorkItem {
+
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
-    public void execute(String filePath, String identifyBy, Double itemId, String itemKey, String selectBy, ZonedDateTime deferUntil, Double deferOffset) {
+    @Execute
+    public void execute(
+            @Idx(index = "1", type = AttributeType.FILE)
+            @NotEmpty
+            @Pkg(label = "Path to file Access") String filePath,
+
+            @Idx(index = "2", type = AttributeType.SELECT, options = {
+                    @Idx.Option(index = "2.1", pkg = @Pkg(label = "By Id", value = "id")),
+                    @Idx.Option(index = "2.2", pkg = @Pkg(label = "By Key", value = "key"))
+            })
+            @Pkg(label = "Select item by", default_value = "id", default_value_type = DataType.STRING)
+            @NotEmpty
+            String identifyBy,
+
+            @Idx(index = "2.1.1", type = AttributeType.NUMBER)
+            @Pkg(label = "Item Id (workqueue.Id)")
+            @NotEmpty
+            Double itemId,
+
+            @Idx(index = "2.2.1", type = AttributeType.TEXT)
+            @Pkg(label = "Item Key (workqueue.Key)")
+            @NotEmpty
+            String itemKey,
+
+            @Idx(index = "3", type = AttributeType.SELECT, options = {
+                    @Idx.Option(index = "3.1", pkg = @Pkg(label = "By date", value = "date")),
+                    @Idx.Option(index = "3.2", pkg = @Pkg(label = "By offset", value = "offset"))
+            })
+            @Pkg(label = "Defer item by", default_value = "date", default_value_type = DataType.STRING)
+            @NotEmpty
+            String selectBy,
+
+            @Idx(index = "3.1.1", type = AttributeType.DATETIME)
+            @Pkg(label = "Defer Until")
+            @NotEmpty
+            ZonedDateTime deferUntil,
+
+            @Idx(index = "3.2.1", type = AttributeType.NUMBER)
+            @Pkg(label = "Offset in minutes")
+            @NotEmpty
+            Double deferOffset
+    ) {
         try {
             AccessExecutor.executeVoidWithConnection(filePath, conn -> {
                 Timestamp ts;
                 WorkqueueItemDao dao = new WorkqueueItemDao((Connection)conn);
                 if ("offset".equalsIgnoreCase(selectBy)) {
                     if (deferOffset == null || deferOffset <= 0.0) {
-                        throw new BotCommandException("El offset debe ser un n\u00famero mayor a 0.");
+                        throw new BotCommandException("El offset debe ser un número mayor a 0.");
                     }
                     ts = Timestamp.from(Instant.now().plusSeconds((long)(deferOffset * 60.0)));
                 } else {
@@ -42,7 +96,7 @@ public class DeferWorkItem {
                     }
                     dao.deferFromWorkingByKey(itemKey, ts);
                 } else {
-                    throw new BotCommandException("Valor inv\u00e1lido en 'Identificar \u00edtem por': " + identifyBy);
+                    throw new BotCommandException("Valor inválido en 'Identificar ítem por': " + identifyBy);
                 }
             });
         }
@@ -50,4 +104,6 @@ public class DeferWorkItem {
             throw new BotCommandException("Defer Work Item: " + e.getMessage(), e);
         }
     }
+
+
 }

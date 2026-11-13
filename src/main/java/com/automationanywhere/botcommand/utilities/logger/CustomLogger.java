@@ -1,39 +1,43 @@
-/*
- * Decompiled with CFR 0.152.
- */
 package com.automationanywhere.botcommand.utilities.logger;
 
-import botframework.shaded.commons.io.FilenameUtils;
-import com.automationanywhere.toolchain.runtime.session.CloseableSessionObject;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
+import org.apache.commons.io.FilenameUtils;
 import java.nio.file.attribute.FileAttribute;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
+import org.apache.logging.log4j.core.config.builder.api.ComponentBuilder;
+import org.apache.logging.log4j.core.config.builder.api.FilterComponentBuilder;
+import org.apache.logging.log4j.core.config.builder.api.LoggerComponentBuilder;
+
+import com.automationanywhere.toolchain.runtime.session.CloseableSessionObject;
+import org.apache.commons.io.FilenameUtils;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.LoggerContext;
 import org.apache.logging.log4j.core.config.builder.api.AppenderComponentBuilder;
-import org.apache.logging.log4j.core.config.builder.api.ComponentBuilder;
 import org.apache.logging.log4j.core.config.builder.api.ConfigurationBuilder;
-import org.apache.logging.log4j.core.config.builder.api.FilterComponentBuilder;
 import org.apache.logging.log4j.core.config.builder.api.LayoutComponentBuilder;
-import org.apache.logging.log4j.core.config.builder.api.LoggerComponentBuilder;
 import org.apache.logging.log4j.core.config.builder.impl.BuiltConfiguration;
 import org.apache.logging.log4j.core.config.builder.impl.DefaultConfigurationBuilder;
 
-public class CustomLogger
-implements CloseableSessionObject {
-    public static final Map<String, CustomLogger> LOGGER_BY_FILE = new ConcurrentHashMap<String, CustomLogger>();
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+
+public class CustomLogger implements CloseableSessionObject {
+
+    // Map público para reutilización por archivo
+    public static final Map<String, CustomLogger> LOGGER_BY_FILE = new ConcurrentHashMap<>();
+
     private final Logger logger;
     private final String loggerId = UUID.randomUUID().toString();
     private final LoggerContext loggerContext;
-    private final Map<Level, String> screenshotFolderPaths = new HashMap<Level, String>();
-    private final Map<Level, String> variablesFolderPaths = new HashMap<Level, String>();
+    private final Map<Level, String> screenshotFolderPaths = new HashMap<>();
+    private final Map<Level, String> variablesFolderPaths = new HashMap<>();
 
+    // Constructor para un solo archivo
     public CustomLogger(String loggerName, String logFilePath, long sizeLimitMB) throws IOException {
         String baseDir = FilenameUtils.getFullPath(logFilePath);
         String screenshotFolder = baseDir + "screenshots";
@@ -59,6 +63,7 @@ implements CloseableSessionObject {
         LOGGER_BY_FILE.put(logFilePath, this);
     }
 
+    // Constructor para múltiples archivos por nivel
     public CustomLogger(String loggerName, Map<Level, String> levelFilePathMap, long sizeLimitMB) throws IOException {
         for (Map.Entry<Level, String> entry : levelFilePathMap.entrySet()) {
             Level level = entry.getKey();
@@ -107,7 +112,9 @@ implements CloseableSessionObject {
         builder.setStatusLevel(Level.ERROR);
     }
 
-    private AppenderComponentBuilder getCustomAppenderBuilder(ConfigurationBuilder<BuiltConfiguration> builder, String appenderName, String filePath, long sizeLimitMB) {
+    private AppenderComponentBuilder getCustomAppenderBuilder(ConfigurationBuilder<BuiltConfiguration> builder,
+                                                              String appenderName, String filePath,
+                                                              long sizeLimitMB) {
         LayoutComponentBuilder layoutBuilder = (LayoutComponentBuilder)builder.newLayout("CustomHTMLLayout").addAttribute("charset", "UTF-8");
         String filePattern = FilenameUtils.getFullPath(filePath) + FilenameUtils.getBaseName(filePath) + "_%i." + FilenameUtils.getExtension(filePath);
         return (AppenderComponentBuilder)((AppenderComponentBuilder)((AppenderComponentBuilder)((AppenderComponentBuilder)((AppenderComponentBuilder)((AppenderComponentBuilder)((AppenderComponentBuilder)builder.newAppender(appenderName, "RollingFile").addAttribute("fileName", filePath)).addAttribute("filePattern", filePattern)).addAttribute("immediateFlush", true)).addAttribute("append", true)).addComponent(layoutBuilder)).addComponent((ComponentBuilder<?>)builder.newComponent("Policies").addComponent((ComponentBuilder<?>)builder.newComponent("SizeBasedTriggeringPolicy").addAttribute("size", sizeLimitMB + "MB")))).addComponent((ComponentBuilder<?>)builder.newComponent("DefaultRolloverStrategy").addAttribute("fileIndex", "nomax"));

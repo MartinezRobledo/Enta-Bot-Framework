@@ -1,14 +1,13 @@
-/*
- * Decompiled with CFR 0.152.
- */
 package com.automationanywhere.botcommand.utilities.logger;
 
 import com.automationanywhere.botcommand.data.Value;
 import com.automationanywhere.botcommand.data.impl.DictionaryValue;
 import com.automationanywhere.botcommand.data.impl.StringValue;
+
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+
 
 public class DataConversion {
     public static Map<String, Value> getMergedDictionary(List<Value> list) {

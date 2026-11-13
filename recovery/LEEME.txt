@@ -1,52 +1,68 @@
-BOT FRAMEWORK: RAMA DEVELOP RECUPERADA
+BOT FRAMEWORK: RECONSTRUCCIÓN SOBRE EL FLUJO DE MAIN
 
-Esta rama parte de origin/main fd8a8e4 y recupera las clases del paquete
-A360EntaBotFramework-1.0.2-20260925-171647.jar. El inventario conserva su SHA-256.
-Las fuentes decompiladas con CFR 0.152 fueron corregidas para compilar con Java 11.
+La rama develop conserva la lógica del paquete publicado
+A360EntaBotFramework-1.0.2-20260925-171647.jar y usa la estructura de origin/main
+fd8a8e4: anotaciones del SDK, procesamiento de anotaciones, commandCodeGen y Shadow.
+El inventario conserva el hash del paquete usado como referencia.
 
-VERSION ACTUAL: 1.0.3
-El build agrega fecha y hora de Buenos Aires al identificador de versión.
-Para generar exactamente el mismo identificador se puede indicar:
-  ./gradlew clean build -PpackageVersion=1.0.3-AAAAMMDD-HHMMSS
+VERSION DE PRUEBA: 1.0.4
+Esta versión reemplaza la reconstrucción provisional 1.0.3.
 
-REQUISITOS Y BUILD
-- JDK 11, con JAVA_HOME apuntando a esa instalación.
-- ./gradlew clean build (Linux) o gradlew.bat clean build (Windows).
-- El wrapper descarga Gradle 7.6.2 una vez; el build no usa repositorios Maven.
-- La salida para importar en Control Room está en build/libs/.
-- smokeTest ejecuta 20 comprobaciones sobre el JAR empaquetado.
-- verifyPackage comprueba las 89 clases, los recursos y los 32 comandos.
+BUILD
+Requiere JDK 11, JAVA_HOME y el wrapper de Gradle 7.6.2:
+  ./gradlew clean build
+En Windows:
+  gradlew.bat clean build
 
-DEPENDENCIAS Y GENERACIÓN
-libs/recovery-dependencies-1.0.2.jar conserva las dependencias que estaban
-empaquetadas en el build perdido, sin las clases propias ni sus recursos.
-Su hash consta en dependencies.sha256. Esto conserva, entre otras cosas,
-la reubicación existente de commons-io y los archivos de servicios JDBC.
-Los SDK de Automation Anywhere se usan para compilar y ejecutar las pruebas;
-no se incluyen de nuevo en el paquete final.
+Paquete final para Control Room:
+  build/libs/A360EntaBotFramework-1.0.4.jar
+El archivo con sufijo -thin es el JAR Java sin dependencias; no es el paquete
+para importar. packageVersion/codeVersion reciben el timestamp generado por
+el SDK, igual que en main.
 
-Se conservan en src/main/java los adaptadores *Command y la condición generada.
-src/main/resources/package.json conserva parámetros, validaciones y metadatos
-del paquete perdido. processResources actualiza únicamente sus dos versiones.
-No se activa command-codegen: las anotaciones originales que solo existían
-en el código fuente no estaban en el JAR. build-original.gradle.txt conserva
-la configuración previa como referencia; no es el build activo.
+FUENTES Y GENERACIÓN
+src/main/java contiene 46 fuentes propias. Las clases de acción usan
+@BotCommand, @CommandPkg, @Execute y las anotaciones de sus parámetros.
+La condición usa @ConditionTest. Se recuperaron también las anotaciones de
+campos inyectados, documentación y contexto global de sesión.
 
-Para cambiar lógica manteniendo las firmas, editar las clases de acción.
-Para añadir acciones o cambiar parámetros, actualizar también el adaptador
-y package.json, o restaurar antes el flujo de anotaciones del SDK.
-package.template queda como referencia del remoto y no entra al paquete.
+Los adaptadores *Command y *Condition se generan únicamente dentro de
+build/generated/sources/annotationProcessor/java/main. No se versionan.
+package.json se genera dentro de build/resources/main desde package.template
+y las anotaciones. No hay un package.json manual en src/main/resources.
 
-TESTS DEL REMOTO
-Los tests anteriores y sus datos se preservan sin cambios en src/legacyTest.
-No se ejecutan en este build de recuperación: pertenecen al código anterior
-y algunos dependen de procesos, rutas y comportamiento de Windows.
-Las comprobaciones activas están en src/test/java/RecoverySmoke.java.
-No se afirma que los tests archivados hayan pasado.
+Se usan las dependencias Maven y los SDK declarados en main. No se compila
+contra el JAR perdido ni contra un paquete agregado de dependencias extraídas.
+Shadow reubica commons-io y conserva la configuración JDBC del proyecto.
 
-PRUEBA EN AUTOMATION ANYWHERE
-Importar el JAR de build/libs como versión nueva del paquete existente en un
-entorno de prueba. Actualizar un bot de prueba a esa versión y verificar las
-acciones utilizadas, especialmente Access/workqueues, archivos y logging.
-Este build no publica paquetes ni cambia bots en Control Room automáticamente.
-La compilación y las pruebas locales no sustituyen esa validación.
+RECUPERACIÓN
+Las cuatro acciones ausentes de main son FileToBase64, AddItemAdvanced,
+GetLastItem y UpsertItemDataField. Sus anotaciones se reconstruyeron a partir
+del contrato del paquete publicado. Para las existentes se restauraron las
+anotaciones originales de main, ajustándolas al contrato del JAR.
+
+Se mantienen las diferencias reales del build perdido, entre ellas:
+- StringToNumberSmart recibe amount, sin decimalPlaces.
+- DeferWorkItem recibe ZonedDateTime en deferUntil.
+- WorkqueueItemDao incluye getLastItem y las operaciones upsert.
+- ItemDataTxnBuffer incluye addUpsert.
+El texto de CopyFile se corrigió para no mencionar el parámetro inexistente
+useSourceName. Sus nombres, tipos, validaciones y valores por defecto no cambian.
+
+Se conservó código original de main donde su bytecode coincide con el publicado;
+las demás implementaciones se reconstruyeron del JAR. No se recuperan todos los
+comentarios ni se afirma que el texto sea idéntico al código fuente perdido.
+
+VALIDACIÓN
+- Los tests de main vuelven a src/test y se ejecutan con TestNG.
+- Dos pruebas de fecha de creación comprueban primero que el sistema de archivos
+  permite modificar creationTime; en caso contrario quedan omitidas. Deben
+  ejecutarse en un sistema compatible para verificar ese comportamiento.
+- RecoveredCommandsTest ejercita adaptadores generados desde las anotaciones.
+- smokeTest ejecuta 20 comprobaciones sobre el JAR final.
+- verifyPackage compara los 32 comandos y la condición con package-original.json,
+  y verifica las clases y recursos recuperados. Solo admite la corrección de texto
+  documentada para CopyFile.
+
+Los resultados del build actual se registran en validacion-develop.json.
+La prueba completa en Control Room/Bot Agent, Access real y Windows sigue pendiente.

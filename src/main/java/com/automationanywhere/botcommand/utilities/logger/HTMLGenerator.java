@@ -1,11 +1,7 @@
-/*
- * Decompiled with CFR 0.152.
- */
 package com.automationanywhere.botcommand.utilities.logger;
 
-import botframework.shaded.commons.io.FilenameUtils;
-import botframework.shaded.commons.io.IOUtils;
-import com.automationanywhere.botcommand.data.Value;
+import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.io.IOUtils;
 import com.automationanywhere.botcommand.data.impl.BooleanValue;
 import com.automationanywhere.botcommand.data.impl.CredentialObject;
 import com.automationanywhere.botcommand.data.impl.DateTimeValue;
@@ -15,19 +11,27 @@ import com.automationanywhere.botcommand.data.impl.NumberValue;
 import com.automationanywhere.botcommand.data.impl.RecordValue;
 import com.automationanywhere.botcommand.data.impl.StringValue;
 import com.automationanywhere.botcommand.data.impl.TableValue;
+import java.nio.file.OpenOption;
+
+import com.automationanywhere.botcommand.data.Value;
+import com.automationanywhere.botcommand.data.impl.*;
 import com.automationanywhere.botcommand.data.model.record.Record;
 import com.automationanywhere.botcommand.data.model.table.Table;
+import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.text.StringEscapeUtils;
+
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import org.apache.commons.text.StringEscapeUtils;
 
 public class HTMLGenerator {
+
     private static final String NULL = "NULL";
     private static final String TEMPLATE_PATH = "/templates/variables.html";
 
@@ -39,6 +43,15 @@ public class HTMLGenerator {
         return "<span class='variable-count'>" + variableCount + " variable" + (variableCount > 1 ? "s" : "") + "</span>";
     }
 
+    /**
+     * Generates a separate HTML file for variable data and returns a link to it
+     *
+     * @param valueMap   Map of variable names to values
+     * @param folderPath Folder where the HTML file will be stored
+     * @param logEventId Unique identifier for the log event
+     *
+     * @return Relative path to the HTML file
+     */
     public static String generateVariableFile(Map<String, Value> valueMap, String folderPath, String logEventId) {
         if (valueMap == null || valueMap.isEmpty()) {
             return "";
@@ -228,6 +241,7 @@ public class HTMLGenerator {
         htmlBuilder.append("</table>\n").append("</div>\n").append("</details>\n");
     }
 
+    // Helper method for table and record cells
     private static void appendValueInCell(Value value, StringBuilder htmlBuilder) {
         if (value == null) {
             htmlBuilder.append(NULL);

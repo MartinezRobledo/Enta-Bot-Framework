@@ -1,12 +1,7 @@
-/*
- * Decompiled with CFR 0.152.
- */
 package com.automationanywhere.botcommand.utilities.workqueue;
 
 public enum ItemIdentifierType {
-    ID,
-    KEY;
-
+    ID, KEY;
 
     public static ItemIdentifierType from(String raw) {
         if (raw == null) {
@@ -20,6 +15,6 @@ public enum ItemIdentifierType {
                 return KEY;
             }
         }
-        throw new IllegalArgumentException("IdentifierType inv\u00e1lido: " + raw);
+        throw new IllegalArgumentException("IdentifierType inválido: " + raw);
     }
 }

@@ -5,6 +5,7 @@ import com.automationanywhere.botcommand.exception.BotCommandException;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.filefilter.TrueFileFilter;
 import org.testng.Assert;
+import org.testng.SkipException;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -120,6 +121,20 @@ public class DeleteFilesFoldersTest {
         }
     }
 
+    private void requireWritableCreationTime() throws IOException {
+        Path probe = Files.createTempFile(Paths.get(TEST_DIRECTORY_PATH), "creation-time-", ".tmp");
+        FileTime expected = FileTime.from(Instant.now().minus(3, ChronoUnit.DAYS));
+        try {
+            Files.setAttribute(probe, "creationTime", expected);
+            FileTime actual = Files.readAttributes(probe, BasicFileAttributes.class).creationTime();
+            if (actual.toMillis() != expected.toMillis()) {
+                throw new SkipException("The filesystem does not support setting creationTime; run this test on Windows.");
+            }
+        } finally {
+            Files.deleteIfExists(probe);
+        }
+    }
+
     @Test
     public void testBasicDeletion() throws IOException {
         // Create a simple structure
@@ -142,6 +157,7 @@ public class DeleteFilesFoldersTest {
 
     @Test
     public void testThresholdAgeFiltering() throws IOException {
+        requireWritableCreationTime();
         // Current time
         Instant now = Instant.now();
 
@@ -189,6 +205,7 @@ public class DeleteFilesFoldersTest {
 
     @Test
     public void testDifferentTimeUnits() throws IOException {
+        requireWritableCreationTime();
         // Current time
         Instant now = Instant.now();
 

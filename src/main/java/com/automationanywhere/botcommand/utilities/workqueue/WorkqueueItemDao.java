@@ -1,6 +1,3 @@
-/*
- * Decompiled with CFR 0.152.
- */
 package com.automationanywhere.botcommand.utilities.workqueue;
 
 import java.sql.Connection;
@@ -10,32 +7,66 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.HashSet;
+
+import java.sql.*;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class WorkqueueItemDao {
-    private static final String TBL_WQ = "[workqueue]";
-    private static final String COL_ID = "[Id]";
-    private static final String COL_KEY = "[Key]";
-    private static final String COL_STATUS = "[Status]";
-    private static final String COL_STATUS_WF = "[Status Workflow]";
-    private static final String COL_STEP_WF = "[Step Workflow]";
-    private static final String COL_CREATED = "[Created Date]";
-    private static final String COL_UPDATED = "[Last Updated]";
-    private static final String COL_EXC_REASON = "[Exception Reason]";
-    private static final String COL_PRIORITY = "[Priority]";
+
+    // --- Tablas / columnas (Access usa corchetes por espacios/reservadas) ---
+    private static final String TBL_WQ          = "[workqueue]";
+    private static final String COL_ID          = "[Id]";
+    private static final String COL_KEY         = "[Key]";
+    private static final String COL_STATUS      = "[Status]";             // Pending | Working | Completed | Exception
+    private static final String COL_STATUS_WF   = "[Status Workflow]";
+    private static final String COL_STEP_WF   = "[Step Workflow]";
+    private static final String COL_CREATED     = "[Created Date]";
+    private static final String COL_UPDATED     = "[Last Updated]";
+    private static final String COL_EXC_REASON  = "[Exception Reason]";
+    private static final String COL_PRIORITY    = "[Priority]";
     private static final String COL_DEFER_UNTIL = "[Defer Until]";
-    private static final String TBL_DATA = "[Item Data]";
-    private static final String COL_D_ID = "[Id]";
-    private static final String COL_D_ITEM_ID = "[Item ID]";
-    private static final String COL_D_KEY = "[Key]";
-    private static final String COL_D_VALUE = "[Value]";
-    private static final String ST_PENDING = "Pending";
-    private static final String ST_WORKING = "Working";
+
+    private static final String TBL_DATA        = "[Item Data]";
+    private static final String COL_D_ID        = "[Id]";
+    private static final String COL_D_ITEM_ID   = "[Item ID]";
+    private static final String COL_D_KEY       = "[Key]";
+    private static final String COL_D_VALUE     = "[Value]";
+
+    // Estados
+    private static final String ST_PENDING   = "Pending";
+    private static final String ST_WORKING   = "Working";
     private static final String ST_COMPLETED = "Completed";
     private static final String ST_EXCEPTION = "Exception";
+
     private final Connection conn;
-    private static final int SQL_LONG_TYPE = 4;
+
+    // Según el tipo de columna en Access:
+    private static final int SQL_LONG_TYPE = java.sql.Types.INTEGER; // si es Long Integer (32-bit)
+    // private static final int SQL_LONG_TYPE = java.sql.Types.BIGINT; // si es Large Number (BigInt 64-bit)
+
+
+    //=====================================================
+    //                  DTO
+    //=====================================================
+    public static final class WorkItem {
+        public final long id;
+        public final String key;
+        public final Long statusWorkflow;  // [Status Workflow]
+        public final String stepWorkflow;    // [Step Workflow]
+        public final Map<String,String> data; // [Item Data] como diccionario
+
+        public WorkItem(long id, String key,
+                        Long statusWorkflow, String stepWorkflow,
+                        Map<String,String> data) {
+            this.id = id;
+            this.key = key;
+            this.statusWorkflow = statusWorkflow;
+            this.stepWorkflow = stepWorkflow;
+            this.data = data;
+        }
+    }
+
 
     public WorkqueueItemDao(Connection conn) {
         this.conn = conn;
@@ -45,6 +76,7 @@ public class WorkqueueItemDao {
         return Timestamp.from(Instant.now());
     }
 
+    // ---------- Utilidades para mensajes claros ----------
     private ModState fetchStateByKey(String key) throws SQLException {
         String sql = "SELECT [Status],[Defer Until] FROM [workqueue] WHERE [Key]=?";
         try (PreparedStatement ps = this.conn.prepareStatement(sql);){
@@ -83,7 +115,6 @@ public class WorkqueueItemDao {
             return modState;
         }
     }
-
     private ModState fetchStateById(long id) throws SQLException {
         String sql = "SELECT [Status],[Defer Until] FROM [workqueue] WHERE [Id]=?";
         try (PreparedStatement ps = this.conn.prepareStatement(sql);){
@@ -122,7 +153,13 @@ public class WorkqueueItemDao {
             return modState;
         }
     }
-
+    private static final class ModState {
+        final String status; final Timestamp deferUntil;
+        ModState(String s, Timestamp d) {
+            this.status = s;
+            this.deferUntil = d;
+        }
+    }
     private SQLException explainNotUpdatableByKey(String key, ModState st, Timestamp now) {
         boolean deferred;
         if (st == null) {
@@ -134,7 +171,6 @@ public class WorkqueueItemDao {
         }
         return new SQLException("Item '" + key + "' no es modificable en estado " + st.status + ".");
     }
-
     private SQLException explainNotUpdatableById(long id, ModState st, Timestamp now) {
         boolean deferred;
         if (st == null) {
@@ -147,6 +183,9 @@ public class WorkqueueItemDao {
         return new SQLException("Item Id=" + id + " no es modificable en estado " + st.status + ".");
     }
 
+    // ==========================================================
+    //                    GET NEXT ITEM (PENDING → WORKING)
+    // ==========================================================
     public WorkItem takeNextPendingAndSetWorking() throws SQLException {
         boolean prevAuto = this.conn.getAutoCommit();
         try {
@@ -206,47 +245,9 @@ public class WorkqueueItemDao {
         }
     }
 
-    public WorkItem getLastItem() throws SQLException {
-        boolean prevAuto = this.conn.getAutoCommit();
-        try {
-            String stepWf;
-            Long statusWf;
-            String key;
-            Long id;
-            block20: {
-                id = null;
-                key = null;
-                statusWf = null;
-                stepWf = null;
-                String sel = "SELECT TOP 1 [Id],[Key],[Status Workflow],[Step Workflow] FROM [workqueue] ORDER BY [Created Date] DESC, [Id] DESC";
-                try (PreparedStatement ps = this.conn.prepareStatement(sel);
-                     ResultSet rs = ps.executeQuery();){
-                    if (rs.next()) {
-                        id = rs.getLong(1);
-                        key = rs.getString(2);
-                        statusWf = rs.getLong(3);
-                        stepWf = rs.getString(4);
-                        break block20;
-                    }
-                    this.conn.commit();
-                    WorkItem workItem = null;
-                    return workItem;
-                }
-            }
-            this.conn.commit();
-            Map<String, String> data = this.getItemDataById(id);
-            WorkItem workItem = new WorkItem(id, key, statusWf, stepWf, data);
-            return workItem;
-        }
-        catch (SQLException ex) {
-            this.conn.rollback();
-            throw ex;
-        }
-        finally {
-            this.conn.setAutoCommit(prevAuto);
-        }
-    }
-
+    // ==========================================================
+    //                WORKING → COMPLETED
+    // ==========================================================
     public WorkItem completeFromWorkingByKey(String key) throws SQLException {
         Timestamp now = this.nowTs();
         boolean prevAuto = this.conn.getAutoCommit();
@@ -301,6 +302,9 @@ public class WorkqueueItemDao {
         }
     }
 
+    // ==========================================================
+    //                WORKING → EXCEPTION
+    // ==========================================================
     public WorkItem exceptionFromWorkingByKey(String key, String reason) throws SQLException {
         Timestamp now = this.nowTs();
         boolean prevAuto = this.conn.getAutoCommit();
@@ -357,6 +361,9 @@ public class WorkqueueItemDao {
         }
     }
 
+    // ==========================================================
+    //                     WORKING → PENDING (DEFER)
+    // ==========================================================
     public WorkItem deferFromWorkingByKey(String key, Timestamp deferUntil) throws SQLException {
         if (deferUntil == null) {
             throw new SQLException("Defer Until es obligatorio.");
@@ -426,6 +433,9 @@ public class WorkqueueItemDao {
         }
     }
 
+    // ==========================================================
+    //                     WORKING → PENDING (RELEASE)
+    // ==========================================================
     public WorkItem releaseFromWorkingByKey(String key) throws SQLException {
         Timestamp now = this.nowTs();
         boolean prevAuto = this.conn.getAutoCommit();
@@ -480,7 +490,11 @@ public class WorkqueueItemDao {
         }
     }
 
-    public Map<String, String> getItemDataById(long itemId) throws SQLException {
+    // ==========================================================
+    //                        GET ITEM DATA
+    // ==========================================================
+    /** Devuelve el diccionario Key/Value de [Item Data] por Item Id. */
+    public Map<String,String> getItemDataById(long itemId) throws SQLException {
         String sql = "SELECT [Key],[Value] FROM [Item Data] WHERE [Item ID]=? ORDER BY [Id] ASC";
         LinkedHashMap<String, String> map = new LinkedHashMap<String, String>();
         try (PreparedStatement ps = this.conn.prepareStatement(sql);){
@@ -496,7 +510,8 @@ public class WorkqueueItemDao {
         return map;
     }
 
-    public Map<String, String> getItemDataByKey(String itemKey) throws SQLException {
+    /** Devuelve Key/Value por Item Key (join con workqueue). */
+    public Map<String,String> getItemDataByKey(String itemKey) throws SQLException {
         String sql = "SELECT d.[Key], d.[Value] FROM [Item Data] d INNER JOIN [workqueue] w ON d.[Item ID] = w.[Id] WHERE w.[Key]=? ORDER BY d.[Id] ASC";
         LinkedHashMap<String, String> map = new LinkedHashMap<String, String>();
         try (PreparedStatement ps = this.conn.prepareStatement(sql);){
@@ -512,6 +527,10 @@ public class WorkqueueItemDao {
         return map;
     }
 
+
+    //============================================================
+    //                   UPDATE WORKFLOW (SET STATUS)
+    //============================================================
     public WorkItem updateWorkflowById(long id, Long statusWf, String stepWf) throws SQLException {
         Timestamp now = this.nowTs();
         boolean prevAuto = this.conn.getAutoCommit();
@@ -574,7 +593,17 @@ public class WorkqueueItemDao {
         return this.buildWorkItemByKey(key);
     }
 
-    public WorkItem insertDataFieldsById(long itemId, Map<String, String> dataToInsert) throws SQLException {
+
+
+    //============================================================
+    //      Modificadores de Item Data en Stagging
+    //============================================================
+
+    //
+    // --- Inserciones en bloque de Item Data ---
+    //   Reglas: WORKING + no diferido + falla si clave existe
+    //
+    public WorkItem insertDataFieldsById(long itemId, Map<String,String> dataToInsert) throws SQLException {
         if (dataToInsert == null || dataToInsert.isEmpty()) {
             return this.buildWorkItemById(itemId);
         }
@@ -596,7 +625,7 @@ public class WorkqueueItemDao {
                     }
                     for (String k : dataToInsert.keySet()) {
                         if (!existing.contains(k)) continue;
-                        throw new SQLException("El campo '" + k + "' ya existe para el \u00edtem Id=" + itemId + ".");
+                        throw new SQLException("El campo '" + k + "' ya existe para el ítem Id=" + itemId + ".");
                     }
                 }
             }
@@ -629,7 +658,7 @@ public class WorkqueueItemDao {
         }
     }
 
-    public WorkItem insertDataFieldsByKey(String itemKey, Map<String, String> dataToInsert) throws SQLException {
+    public WorkItem insertDataFieldsByKey(String itemKey, Map<String,String> dataToInsert) throws SQLException {
         if (itemKey == null || itemKey.isBlank()) {
             throw new SQLException("Item Key es obligatorio.");
         }
@@ -670,7 +699,7 @@ public class WorkqueueItemDao {
                     }
                     for (String k : dataToInsert.keySet()) {
                         if (!existing.contains(k)) continue;
-                        throw new SQLException("El campo '" + k + "' ya existe para el \u00edtem Key='" + itemKey + "'.");
+                        throw new SQLException("El campo '" + k + "' ya existe para el ítem Key='" + itemKey + "'.");
                     }
                 }
             }
@@ -692,6 +721,208 @@ public class WorkqueueItemDao {
             }
             this.conn.commit();
             WorkItem workItem = this.buildWorkItemByKey(itemKey);
+            return workItem;
+        }
+        catch (SQLException ex) {
+            this.conn.rollback();
+            throw ex;
+        }
+        finally {
+            this.conn.setAutoCommit(prevAuto);
+        }
+    }
+
+    //===========================================================
+    //              Maintain Queue
+    //===========================================================
+
+    // --- Resultado de la purga ---
+    public static final class DeletedStats {
+        public final int itemsDeleted;
+        public final int dataRowsDeleted;
+        public final Timestamp cutoff;
+        public DeletedStats(int itemsDeleted, int dataRowsDeleted, Timestamp cutoff) {
+            this.itemsDeleted = itemsDeleted;
+            this.dataRowsDeleted = dataRowsDeleted;
+            this.cutoff = cutoff;
+        }
+    }
+
+    /**
+     * Borra ítems y su [Item Data] con [Created Date] < cutoff.
+     * - Primero borra [Item Data] (JOIN con [workqueue]),
+     * - luego borra de [workqueue].
+     */
+    public DeletedStats purgeOldItemsByCreatedDate(Timestamp cutoff) throws SQLException {
+        if (cutoff == null) {
+            throw new SQLException("La fecha de corte es obligatoria.");
+        }
+        boolean prevAuto = this.conn.getAutoCommit();
+        try {
+            int itemsDeleted;
+            int dataRowsDeleted;
+            this.conn.setAutoCommit(false);
+            String delData = "DELETE d.* FROM [Item Data] AS d INNER JOIN [workqueue] AS w ON d.[Item ID] = w.[Id] WHERE w.[Created Date] < ?";
+            try (PreparedStatement ps = this.conn.prepareStatement(delData);){
+                ps.setTimestamp(1, cutoff);
+                dataRowsDeleted = ps.executeUpdate();
+            }
+            String delItems = "DELETE FROM [workqueue] WHERE [Created Date] < ?";
+            try (PreparedStatement ps = this.conn.prepareStatement(delItems);){
+                ps.setTimestamp(1, cutoff);
+                itemsDeleted = ps.executeUpdate();
+            }
+            this.conn.commit();
+            DeletedStats deletedStats = new DeletedStats(itemsDeleted, dataRowsDeleted, cutoff);
+            return deletedStats;
+        }
+        catch (SQLException ex) {
+            this.conn.rollback();
+            throw ex;
+        }
+        finally {
+            this.conn.setAutoCommit(prevAuto);
+        }
+    }
+
+
+
+
+    //============================================================
+    //                  HELPERS
+    //============================================================
+    //
+    // --- Lecturas públicas, reusando builders privados ---
+    //
+    public WorkItem readWorkItemById(long id) throws SQLException {
+        return this.buildWorkItemById(id);
+    }
+
+    public WorkItem readWorkItemByKey(String key) throws SQLException {
+        return this.buildWorkItemByKey(key);
+    }
+
+    // Carga WorkItem por ID (sin exponer [Status])
+    private WorkItem buildWorkItemById(long id) throws SQLException {
+        String sql = "SELECT [Key],[Status Workflow],[Step Workflow] FROM [workqueue] WHERE [Id]=?";
+        try (PreparedStatement ps = this.conn.prepareStatement(sql);){
+            WorkItem workItem;
+            block16: {
+                ResultSet rs;
+                block14: {
+                    WorkItem workItem2;
+                    block15: {
+                        ps.setLong(1, id);
+                        rs = ps.executeQuery();
+                        try {
+                            if (rs.next()) break block14;
+                            workItem2 = null;
+                            if (rs == null) break block15;
+                        }
+                        catch (Throwable throwable) {
+                            if (rs != null) {
+                                try {
+                                    rs.close();
+                                }
+                                catch (Throwable throwable2) {
+                                    throwable.addSuppressed(throwable2);
+                                }
+                            }
+                            throw throwable;
+                        }
+                        rs.close();
+                    }
+                    return workItem2;
+                }
+                String key = rs.getString(1);
+                long wf = rs.getLong(2);
+                Long statusWf = rs.wasNull() ? null : Long.valueOf(wf);
+                String stepWf = rs.getString(3);
+                Map<String, String> data = this.getItemDataById(id);
+                workItem = new WorkItem(id, key, statusWf, stepWf, data);
+                if (rs == null) break block16;
+                rs.close();
+            }
+            return workItem;
+        }
+    }
+
+    private WorkItem buildWorkItemByKey(String key) throws SQLException {
+        String sql = "SELECT [Id],[Status Workflow],[Step Workflow] FROM [workqueue] WHERE [Key]=?";
+        try (PreparedStatement ps = this.conn.prepareStatement(sql);){
+            WorkItem workItem;
+            block16: {
+                ResultSet rs;
+                block14: {
+                    WorkItem workItem2;
+                    block15: {
+                        ps.setString(1, key);
+                        rs = ps.executeQuery();
+                        try {
+                            if (rs.next()) break block14;
+                            workItem2 = null;
+                            if (rs == null) break block15;
+                        }
+                        catch (Throwable throwable) {
+                            if (rs != null) {
+                                try {
+                                    rs.close();
+                                }
+                                catch (Throwable throwable2) {
+                                    throwable.addSuppressed(throwable2);
+                                }
+                            }
+                            throw throwable;
+                        }
+                        rs.close();
+                    }
+                    return workItem2;
+                }
+                long id = rs.getLong(1);
+                long wf = rs.getLong(2);
+                Long statusWf = rs.wasNull() ? null : Long.valueOf(wf);
+                String stepWf = rs.getString(3);
+                Map<String, String> data = this.getItemDataById(id);
+                workItem = new WorkItem(id, key, statusWf, stepWf, data);
+                if (rs == null) break block16;
+                rs.close();
+            }
+            return workItem;
+        }
+    }
+
+
+
+    public WorkItem getLastItem() throws SQLException {
+        boolean prevAuto = this.conn.getAutoCommit();
+        try {
+            String stepWf;
+            Long statusWf;
+            String key;
+            Long id;
+            block20: {
+                id = null;
+                key = null;
+                statusWf = null;
+                stepWf = null;
+                String sel = "SELECT TOP 1 [Id],[Key],[Status Workflow],[Step Workflow] FROM [workqueue] ORDER BY [Created Date] DESC, [Id] DESC";
+                try (PreparedStatement ps = this.conn.prepareStatement(sel);
+                     ResultSet rs = ps.executeQuery();){
+                    if (rs.next()) {
+                        id = rs.getLong(1);
+                        key = rs.getString(2);
+                        statusWf = rs.getLong(3);
+                        stepWf = rs.getString(4);
+                        break block20;
+                    }
+                    this.conn.commit();
+                    WorkItem workItem = null;
+                    return workItem;
+                }
+            }
+            this.conn.commit();
+            Map<String, String> data = this.getItemDataById(id);
+            WorkItem workItem = new WorkItem(id, key, statusWf, stepWf, data);
             return workItem;
         }
         catch (SQLException ex) {
@@ -850,172 +1081,6 @@ public class WorkqueueItemDao {
         }
         finally {
             this.conn.setAutoCommit(prevAuto);
-        }
-    }
-
-    public DeletedStats purgeOldItemsByCreatedDate(Timestamp cutoff) throws SQLException {
-        if (cutoff == null) {
-            throw new SQLException("La fecha de corte es obligatoria.");
-        }
-        boolean prevAuto = this.conn.getAutoCommit();
-        try {
-            int itemsDeleted;
-            int dataRowsDeleted;
-            this.conn.setAutoCommit(false);
-            String delData = "DELETE d.* FROM [Item Data] AS d INNER JOIN [workqueue] AS w ON d.[Item ID] = w.[Id] WHERE w.[Created Date] < ?";
-            try (PreparedStatement ps = this.conn.prepareStatement(delData);){
-                ps.setTimestamp(1, cutoff);
-                dataRowsDeleted = ps.executeUpdate();
-            }
-            String delItems = "DELETE FROM [workqueue] WHERE [Created Date] < ?";
-            try (PreparedStatement ps = this.conn.prepareStatement(delItems);){
-                ps.setTimestamp(1, cutoff);
-                itemsDeleted = ps.executeUpdate();
-            }
-            this.conn.commit();
-            DeletedStats deletedStats = new DeletedStats(itemsDeleted, dataRowsDeleted, cutoff);
-            return deletedStats;
-        }
-        catch (SQLException ex) {
-            this.conn.rollback();
-            throw ex;
-        }
-        finally {
-            this.conn.setAutoCommit(prevAuto);
-        }
-    }
-
-    public WorkItem readWorkItemById(long id) throws SQLException {
-        return this.buildWorkItemById(id);
-    }
-
-    public WorkItem readWorkItemByKey(String key) throws SQLException {
-        return this.buildWorkItemByKey(key);
-    }
-
-    private WorkItem buildWorkItemById(long id) throws SQLException {
-        String sql = "SELECT [Key],[Status Workflow],[Step Workflow] FROM [workqueue] WHERE [Id]=?";
-        try (PreparedStatement ps = this.conn.prepareStatement(sql);){
-            WorkItem workItem;
-            block16: {
-                ResultSet rs;
-                block14: {
-                    WorkItem workItem2;
-                    block15: {
-                        ps.setLong(1, id);
-                        rs = ps.executeQuery();
-                        try {
-                            if (rs.next()) break block14;
-                            workItem2 = null;
-                            if (rs == null) break block15;
-                        }
-                        catch (Throwable throwable) {
-                            if (rs != null) {
-                                try {
-                                    rs.close();
-                                }
-                                catch (Throwable throwable2) {
-                                    throwable.addSuppressed(throwable2);
-                                }
-                            }
-                            throw throwable;
-                        }
-                        rs.close();
-                    }
-                    return workItem2;
-                }
-                String key = rs.getString(1);
-                long wf = rs.getLong(2);
-                Long statusWf = rs.wasNull() ? null : Long.valueOf(wf);
-                String stepWf = rs.getString(3);
-                Map<String, String> data = this.getItemDataById(id);
-                workItem = new WorkItem(id, key, statusWf, stepWf, data);
-                if (rs == null) break block16;
-                rs.close();
-            }
-            return workItem;
-        }
-    }
-
-    private WorkItem buildWorkItemByKey(String key) throws SQLException {
-        String sql = "SELECT [Id],[Status Workflow],[Step Workflow] FROM [workqueue] WHERE [Key]=?";
-        try (PreparedStatement ps = this.conn.prepareStatement(sql);){
-            WorkItem workItem;
-            block16: {
-                ResultSet rs;
-                block14: {
-                    WorkItem workItem2;
-                    block15: {
-                        ps.setString(1, key);
-                        rs = ps.executeQuery();
-                        try {
-                            if (rs.next()) break block14;
-                            workItem2 = null;
-                            if (rs == null) break block15;
-                        }
-                        catch (Throwable throwable) {
-                            if (rs != null) {
-                                try {
-                                    rs.close();
-                                }
-                                catch (Throwable throwable2) {
-                                    throwable.addSuppressed(throwable2);
-                                }
-                            }
-                            throw throwable;
-                        }
-                        rs.close();
-                    }
-                    return workItem2;
-                }
-                long id = rs.getLong(1);
-                long wf = rs.getLong(2);
-                Long statusWf = rs.wasNull() ? null : Long.valueOf(wf);
-                String stepWf = rs.getString(3);
-                Map<String, String> data = this.getItemDataById(id);
-                workItem = new WorkItem(id, key, statusWf, stepWf, data);
-                if (rs == null) break block16;
-                rs.close();
-            }
-            return workItem;
-        }
-    }
-
-    public static final class DeletedStats {
-        public final int itemsDeleted;
-        public final int dataRowsDeleted;
-        public final Timestamp cutoff;
-
-        public DeletedStats(int itemsDeleted, int dataRowsDeleted, Timestamp cutoff) {
-            this.itemsDeleted = itemsDeleted;
-            this.dataRowsDeleted = dataRowsDeleted;
-            this.cutoff = cutoff;
-        }
-    }
-
-    private static final class ModState {
-        final String status;
-        final Timestamp deferUntil;
-
-        ModState(String s, Timestamp d) {
-            this.status = s;
-            this.deferUntil = d;
-        }
-    }
-
-    public static final class WorkItem {
-        public final long id;
-        public final String key;
-        public final Long statusWorkflow;
-        public final String stepWorkflow;
-        public final Map<String, String> data;
-
-        public WorkItem(long id, String key, Long statusWorkflow, String stepWorkflow, Map<String, String> data) {
-            this.id = id;
-            this.key = key;
-            this.statusWorkflow = statusWorkflow;
-            this.stepWorkflow = stepWorkflow;
-            this.data = data;
         }
     }
 }

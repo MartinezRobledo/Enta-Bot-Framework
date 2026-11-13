@@ -1,29 +1,91 @@
-/*
- * Decompiled with CFR 0.152.
- */
 package com.automationanywhere.botcommand.actions.device;
 
-import com.automationanywhere.botcommand.data.Value;
-import com.automationanywhere.botcommand.data.impl.BooleanValue;
-import com.automationanywhere.botcommand.data.impl.DictionaryValue;
-import com.automationanywhere.botcommand.data.impl.NumberValue;
-import com.automationanywhere.botcommand.data.impl.StringValue;
-import com.automationanywhere.botcommand.exception.BotCommandException;
 import java.nio.file.CopyOption;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileAttribute;
+
+import com.automationanywhere.botcommand.data.Value;
+import com.automationanywhere.botcommand.data.impl.DictionaryValue;
+import com.automationanywhere.botcommand.data.impl.BooleanValue;
+import com.automationanywhere.botcommand.data.impl.NumberValue;
+import com.automationanywhere.botcommand.data.impl.StringValue;
+import com.automationanywhere.botcommand.exception.BotCommandException;
+import com.automationanywhere.commandsdk.annotations.*;
+import com.automationanywhere.commandsdk.annotations.rules.*;
+import com.automationanywhere.commandsdk.model.AttributeType;
+import com.automationanywhere.commandsdk.model.DataType;
+
+import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.HashMap;
 
+@BotCommand
+@CommandPkg(
+        label = "Copy File",
+        name = "device_copy_file",
+        node_label = "Copy {{sourcePath}} to {{destinationPath}} | mode {{pathType}} {{overwriteExisting}} {{createMissingFolders}}",
+        description = "Copia un archivo desde un origen a un destino. Permite renombrar el archivo en el destino y crear carpetas faltantes.",
+        icon = "folders.svg",
+        group_label = "Device"
+)
 public class CopyFile {
+
     private static final String PATH_RELATIVE = "RELATIVE";
     private static final String PATH_ABSOLUTE = "ABSOLUTE";
 
-    public DictionaryValue action(String pathType, String baseFolderPath, String sourcePath, String destinationPath, Boolean destinationIsFolder, Boolean createMissingFolders, Boolean overwriteExisting) {
+    @Execute
+    public DictionaryValue action(
+            // Modo de rutas
+            @Idx(index = "1", type = AttributeType.SELECT, options = {
+                    @Idx.Option(index = "1.1", pkg = @Pkg(label = "Relative Path", value = PATH_RELATIVE)),
+                    @Idx.Option(index = "1.2", pkg = @Pkg(label = "Absolute Path", value = PATH_ABSOLUTE))
+            })
+            @Pkg(label = "Path mode", default_value = PATH_RELATIVE, default_value_type = DataType.STRING)
+            @NotEmpty
+            @SelectModes
+            String pathType,
+
+            // Base folder para modo relativo
+            @Idx(index = "1.1.1", type = AttributeType.FILE)
+            @Pkg(label = "Base folder path", description = "Carpeta raíz para resolver rutas relativas")
+            @NotEmpty
+            @FileFolder
+            String baseFolderPath,
+
+            // Origen (archivo)
+            @Idx(index = "2", type = AttributeType.FILE)
+            @Pkg(label = "Source file path", description = "Ruta del archivo de origen")
+            @NotEmpty
+            String sourcePath,
+
+            // Destino: puede ser ruta completa a archivo (permite renombrar) o carpeta si se marca la opción
+            @Idx(index = "3", type = AttributeType.FILE)
+            @Pkg(
+                    label = "Destination path",
+                    description = "Si 'Destination is a folder' está activo o el destino ya es una carpeta, se reutiliza el nombre del archivo de origen."
+            )
+            @NotEmpty
+            String destinationPath,
+
+            @Idx(index = "4", type = AttributeType.BOOLEAN)
+            @Pkg(label = "Destination is a folder", default_value = "false", default_value_type = DataType.BOOLEAN)
+            Boolean destinationIsFolder,
+
+            // Opciones
+            @Idx(index = "5", type = AttributeType.BOOLEAN)
+            @Pkg(label = "Create missing folders", description = "Crear las carpetas del destino si no existen",
+                    default_value = "true", default_value_type = DataType.BOOLEAN)
+            Boolean createMissingFolders,
+
+            @Idx(index = "6", type = AttributeType.BOOLEAN)
+            @Pkg(label = "Overwrite if exists", description = "Sobrescribir si el archivo destino ya existe",
+                    default_value = "false", default_value_type = DataType.BOOLEAN)
+            Boolean overwriteExisting
+    ) {
         try {
             CopyOption[] copyOptionArray;
             Path dst;
@@ -43,20 +105,20 @@ public class CopyFile {
                 src = Paths.get(sourcePath, new String[0]).toAbsolutePath().normalize();
                 dstBase = Paths.get(destinationPath, new String[0]).toAbsolutePath().normalize();
             } else {
-                throw new BotCommandException("Path mode inv\u00e1lido: " + pathType);
+                throw new BotCommandException("Path mode inválido: " + pathType);
             }
             if (!Files.exists(src, new LinkOption[0])) {
                 throw new BotCommandException("El archivo de origen no existe: " + String.valueOf(src));
             }
             if (Files.isDirectory(src, new LinkOption[0])) {
-                throw new BotCommandException("El origen es un directorio. Esta acci\u00f3n solo copia archivos.");
+                throw new BotCommandException("El origen es un directorio. Esta acción solo copia archivos.");
             }
             boolean destIsFolderFlag = destinationIsFolder != null && destinationIsFolder != false;
             boolean destExistsDir = Files.exists(dstBase, new LinkOption[0]) && Files.isDirectory(dstBase, new LinkOption[0]);
             boolean treatAsFolder = destIsFolderFlag || destExistsDir;
             Path path = dst = treatAsFolder ? dstBase.resolve(src.getFileName()).normalize() : dstBase.normalize();
             if (src.equals(dst)) {
-                throw new BotCommandException("El destino es igual al origen. Operaci\u00f3n no v\u00e1lida.");
+                throw new BotCommandException("El destino es igual al origen. Operación no válida.");
             }
             Path destParent = dst.getParent();
             if (destParent != null && !Files.exists(destParent, new LinkOption[0])) {
@@ -92,7 +154,7 @@ public class CopyFile {
             return new DictionaryValue(ret);
         }
         catch (Exception e) {
-            throw new BotCommandException("CopyFile fall\u00f3: " + e.getMessage(), e);
+            throw new BotCommandException("CopyFile falló: " + e.getMessage(), e);
         }
     }
 }

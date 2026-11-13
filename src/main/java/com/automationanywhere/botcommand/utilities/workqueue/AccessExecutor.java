@@ -1,19 +1,12 @@
-/*
- * Decompiled with CFR 0.152.
- */
 package com.automationanywhere.botcommand.utilities.workqueue;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
 
 public class AccessExecutor {
+
     private static final String DRIVER = "net.ucanaccess.jdbc.UcanaccessDriver";
 
-    /*
-     * Enabled aggressive block sorting
-     * Enabled unnecessary exception pruning
-     * Enabled aggressive exception aggregation
-     */
     public static <T> T executeWithConnection(String filePath, SqlFunction<Connection, T> action) {
         try {
             Class.forName(DRIVER);
@@ -25,8 +18,13 @@ public class AccessExecutor {
             }
         }
         catch (Exception e) {
-            throw new RuntimeException("Error ejecutando acci\u00f3n sobre Access: " + e.getMessage(), e);
+            throw new RuntimeException("Error ejecutando acción sobre Access: " + e.getMessage(), e);
         }
+    }
+
+    @FunctionalInterface
+    public interface SqlFunction<C, R> {
+        R apply(C conn) throws Exception;
     }
 
     public static void executeVoidWithConnection(String filePath, SqlConsumer<Connection> action) {
@@ -37,12 +35,8 @@ public class AccessExecutor {
     }
 
     @FunctionalInterface
-    public static interface SqlConsumer<C> {
-        public void accept(C var1) throws Exception;
+    public interface SqlConsumer<C> {
+        void accept(C conn) throws Exception;
     }
 
-    @FunctionalInterface
-    public static interface SqlFunction<C, R> {
-        public R apply(C var1) throws Exception;
-    }
 }

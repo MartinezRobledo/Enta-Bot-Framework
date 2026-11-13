@@ -1,23 +1,73 @@
-/*
- * Decompiled with CFR 0.152.
- */
 package com.automationanywhere.botcommand.actions.documentation;
 
 import com.automationanywhere.botcommand.data.Value;
 import com.automationanywhere.botcommand.data.model.image.Image;
+import com.automationanywhere.commandsdk.annotations.*;
+import com.automationanywhere.commandsdk.annotations.rules.NotEmpty;
+import com.automationanywhere.commandsdk.model.AttributeType;
+
 import java.util.Map;
 
+
+@BotCommand
+@CommandPkg(
+        label = "Steps",
+        node_label = "{{sequenceTitle}}",
+        description = "Runs a sequence of commands, allows documentation and screenshots",
+        icon = "sequence.svg",
+        name = "documentation_sequence",
+        group_label = "Documentation",
+        text_color = "#4285f4",
+        documentation_url = "https://github.com/A360-Tools/Bot-Framework/blob/main/docs/documentation/Sequence.md",
+        background_color = "#4285f4",
+        nestable = true
+)
 public class Sequence {
+
+    @Idx(index = "1", type = AttributeType.TEXT)
+    @Pkg(label = "Title")
+    @Inject
+    @NotEmpty
     String sequenceTitle;
+    @Idx(index = "2", type = AttributeType.HTML)
+    @Pkg(label = "Documentation", description = "Documentation of actions being performed")
+    @Inject
     Map<String, Value> sequenceDescription;
+    @Idx(index = "3", type = AttributeType.CHECKBOX)
+    @Pkg(label = "Capture image")
+    @Inject
     Boolean sequenceCheckBox1;
+    @Idx(index = "3.1", type = AttributeType.TEXTAREA)
+    @Pkg(label = "Detail about captured image")
+    @Inject
     Image sequenceImageText1;
+    @Idx(index = "3.2", type = AttributeType.IMAGE)
+    @Pkg(label = "")
+    @Inject
     Image sequenceImage1;
+    @Idx(index = "4", type = AttributeType.CHECKBOX)
+    @Pkg(label = "Capture image")
+    @Inject
     Boolean sequenceCheckBox2;
+    @Idx(index = "4.1", type = AttributeType.TEXTAREA)
+    @Pkg(label = "Detail about captured image")
+    @Inject
     Image sequenceImageText2;
+    @Idx(index = "4.2", type = AttributeType.IMAGE)
+    @Pkg(label = "")
+    @Inject
     Image sequenceImage2;
+    @Idx(index = "5", type = AttributeType.CHECKBOX)
+    @Pkg(label = "Capture image")
+    @Inject
     Boolean sequenceCheckBox3;
+    @Idx(index = "5.1", type = AttributeType.TEXTAREA)
+    @Pkg(label = "Detail about captured image")
+    @Inject
     Image sequenceImageText3;
+    @Idx(index = "5.2", type = AttributeType.IMAGE)
+    @Pkg(label = "")
+    @Inject
     Image sequenceImage3;
 
     public void setSequenceCheckBox1(Boolean sequenceCheckBox1) {
@@ -64,6 +114,11 @@ public class Sequence {
         this.sequenceImage3 = sequenceImage3;
     }
 
-    public void action() {
+    @Execute
+    public void action(
+
+
+    ) {
+
     }
 }

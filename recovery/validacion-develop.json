@@ -1,14 +1,21 @@
 {
   "branch": "develop",
   "baseCommit": "fd8a8e444ee58e548770ab3cd3b6cbe52d92ffd8",
-  "packageVersion": "1.0.3-20261113-114527",
-  "jar": "A360EntaBotFramework-1.0.3-20261113-114527.jar",
-  "sha256": "ad5a7eeb1f4a83d916e0199143753fd90b53c2a592516c903772ccc4321ae266",
-  "gradleBuild": "PASS",
-  "regressionChecks": 20,
-  "publicProtectedSignaturesIdentical": true,
-  "compiledOwnClasses": 89,
+  "version": "1.0.4-20261113-125224",
+  "artifact": "A360EntaBotFramework-1.0.4.jar",
+  "sha256": "6fd5cfca0298c3bc2a6f15e1da61dbb229d71943db6fea1b29964620d8d34fd0",
+  "build": "PASS",
+  "tests": {
+    "passed": 41,
+    "failed": 0,
+    "skipped": 2
+  },
+  "smokeChecks": 20,
   "commands": 32,
-  "controlRoomTested": false,
-  "legacyTestsExecuted": false
+  "conditions": 1,
+  "ownClasses": 89,
+  "sdkGenerationRestored": true,
+  "publicProtectedApiMatchesPublishedJar": true,
+  "dependencyEntryBytesMatchPublishedJar": true,
+  "controlRoomTested": false
 }

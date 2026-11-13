@@ -1,19 +1,45 @@
-/*
- * Decompiled with CFR 0.152.
- */
 package com.automationanywhere.botcommand.actions.conversion;
+
+import java.util.regex.Pattern;
 
 import com.automationanywhere.botcommand.data.Value;
 import com.automationanywhere.botcommand.data.impl.NumberValue;
 import com.automationanywhere.botcommand.exception.BotCommandException;
-import java.math.BigDecimal;
-import java.util.regex.Pattern;
+import com.automationanywhere.commandsdk.annotations.*;
+import com.automationanywhere.commandsdk.annotations.rules.NotEmpty;
+import com.automationanywhere.commandsdk.model.AttributeType;
+import com.automationanywhere.commandsdk.model.DataType;
 
+import java.math.BigDecimal;
+
+@BotCommand
+@CommandPkg(
+        name = "string_to_number_smart",
+        label = "String → Number",
+        node_label = "Parsear {{amount}}",
+        description = "Valida y convierte un importe (String) a NUMBER con reglas estrictas",
+        group_label = "Conversion",
+        icon = "conversion.svg",
+        return_type = DataType.NUMBER,
+        return_label = "Importe numérico"
+)
 public class StringToNumberSmart {
-    public Value<Double> action(String amount) {
+
+    @Execute
+    public Value<Double> action(
+            @Idx(index = "1", type = AttributeType.TEXT)
+            @Pkg(
+                    label = "Importe (String)",
+                    description = "Ej: 123 | 1,234.56 | 1.234,56 | $-1,234.56 | (123) | $(1,234) | \"123\" | '123'"
+            )
+            @NotEmpty
+            String amount
+    ) {
         BigDecimal bd = StringToNumberSmart.parseStrictAmount(amount);
         return new NumberValue(bd.toPlainString(), true);
     }
+
+    // ------------------------- Parser estricto -------------------------
 
     private static BigDecimal parseStrictAmount(String input) {
         if (input == null) {
@@ -21,21 +47,21 @@ public class StringToNumberSmart {
         }
         String s = input.trim();
         if (s.isEmpty()) {
-            throw new BotCommandException("El valor no puede estar vac\u00edo.");
+            throw new BotCommandException("El valor no puede estar vacío.");
         }
         if (s.startsWith("\"") && s.endsWith("\"") || s.startsWith("'") && s.endsWith("'")) {
             if (s.length() < 2) {
-                throw new BotCommandException("Comillas inv\u00e1lidas.");
+                throw new BotCommandException("Comillas inválidas.");
             }
             if ((s = s.substring(1, s.length() - 1).trim()).isEmpty()) {
-                throw new BotCommandException("El valor no puede estar vac\u00edo.");
+                throw new BotCommandException("El valor no puede estar vacío.");
             }
             if (s.indexOf(34) >= 0 || s.indexOf(39) >= 0) {
                 throw new BotCommandException("Las comillas solo pueden envolver el valor completo.");
             }
         }
         if (!(s = s.replaceAll("[\\s\\u00A0\\u202F]+", "")).matches("^[0-9\\.,\\$\\(\\)\\-]+$")) {
-            throw new BotCommandException("Caracteres inv\u00e1lidos. Solo d\u00edgitos, ',', '.', '$', '(', ')', '-'.");
+            throw new BotCommandException("Caracteres inválidos. Solo dígitos, ',', '.', '$', '(', ')', '-'.");
         }
         boolean negative = false;
         if (s.startsWith("$(") && s.endsWith(")")) {
@@ -44,7 +70,7 @@ public class StringToNumberSmart {
         } else if (s.startsWith("(") && s.endsWith(")")) {
             negative = true;
             if ((s = s.substring(1, s.length() - 1)).contains("$")) {
-                throw new BotCommandException("El s\u00edmbolo '$' debe estar al inicio absoluto.");
+                throw new BotCommandException("El símbolo '$' debe estar al inicio absoluto.");
             }
         } else {
             if (s.startsWith("$-")) {
@@ -60,17 +86,17 @@ public class StringToNumberSmart {
                 s = s.substring(1);
             }
             if (s.indexOf(45) >= 0) {
-                throw new BotCommandException("El '-' solo puede ir al inicio (o inmediatamente despu\u00e9s de '$').");
+                throw new BotCommandException("El '-' solo puede ir al inicio (o inmediatamente después de '$').");
             }
             if (s.indexOf(40) >= 0 || s.indexOf(41) >= 0) {
-                throw new BotCommandException("Los par\u00e9ntesis deben envolver todo el n\u00famero.");
+                throw new BotCommandException("Los paréntesis deben envolver todo el número.");
             }
             if (s.indexOf(36) >= 0) {
                 throw new BotCommandException("El '$' debe estar al inicio absoluto.");
             }
         }
         if (s.isEmpty()) {
-            throw new BotCommandException("Falta el valor num\u00e9rico.");
+            throw new BotCommandException("Falta el valor numérico.");
         }
         int countDot = StringToNumberSmart.countChar(s, '.');
         int countComma = StringToNumberSmart.countChar(s, ',');
@@ -87,7 +113,7 @@ public class StringToNumberSmart {
                 groupSep = Character.valueOf('.');
             }
             if (StringToNumberSmart.countChar(s, decimalSep.charValue()) != 1) {
-                throw new BotCommandException("Formato inv\u00e1lido: m\u00faltiples separadores decimales.");
+                throw new BotCommandException("Formato inválido: múltiples separadores decimales.");
             }
             return StringToNumberSmart.parseWithBothSeps(s, decimalSep.charValue(), groupSep.charValue(), negative);
         }
@@ -107,18 +133,20 @@ public class StringToNumberSmart {
             throw new BotCommandException("Separadores mal ubicados.");
         }
         if (!s.matches("\\d+")) {
-            throw new BotCommandException("La parte entera debe contener solo d\u00edgitos.");
+            throw new BotCommandException("La parte entera debe contener solo dígitos.");
         }
         BigDecimal bd = new BigDecimal(s);
         return negative ? bd.negate() : bd;
     }
+
+    // --------------------- Utilidades de validación ---------------------
 
     private static BigDecimal parseWithBothSeps(String s, char decimalSep, char groupSep, boolean negative) {
         int idx = s.lastIndexOf(decimalSep);
         String intPart = s.substring(0, idx);
         String fracPart = s.substring(idx + 1);
         if (fracPart.isEmpty() || !fracPart.matches("\\d+")) {
-            throw new BotCommandException("Parte decimal inv\u00e1lida.");
+            throw new BotCommandException("Parte decimal inválida.");
         }
         if (StringToNumberSmart.countChar(intPart, decimalSep) > 0) {
             throw new BotCommandException("Separadores inconsistentes en la parte entera.");
@@ -133,7 +161,7 @@ public class StringToNumberSmart {
             return negative ? bd.negate() : bd;
         }
         catch (NumberFormatException ex) {
-            throw new BotCommandException("N\u00famero inv\u00e1lido.", ex);
+            throw new BotCommandException("Número inválido.", ex);
         }
     }
 

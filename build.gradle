@@ -1,100 +1,162 @@
-import groovy.json.JsonOutput
-import groovy.json.JsonSlurper
-import java.time.ZonedDateTime
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.util.zip.ZipFile
+buildscript {
+	repositories {
+		gradlePluginPortal()
+		flatDir {
+			dirs 'libs'
+		}
+		dependencies {
+			classpath name:'package-compileonly-sdk', version: '1.5.0'
+			classpath "gradle.plugin.com.github.johnrengelman:shadow:7.1.1"
+		}
+	}
+}
 
 plugins {
-    id 'java'
+	id 'java'
 }
 
-group = 'com.automationanywhere'
-version = '1.0.3'
-sourceCompatibility = JavaVersion.VERSION_11
-targetCompatibility = JavaVersion.VERSION_11
+configure(allprojects) {
 
-// Generated SDK adapters and package.json were recovered from the published JAR.
-// Do not run command-codegen until the source annotations have been restored.
-def recoveredDependencies = file('libs/recovery-dependencies-1.0.2.jar')
-def sdkJars = files('libs/package-runtime-sdk-1.0.0.jar',
-                    'libs/package-compileonly-sdk-1.5.0.jar')
-def stamp = ZonedDateTime.now(ZoneId.of('America/Argentina/Buenos_Aires'))
-        .format(DateTimeFormatter.ofPattern('yyyyMMdd-HHmmss'))
-def aaVersion = providers.gradleProperty('packageVersion').getOrElse("${version}-${stamp}")
+    apply plugin: 'com.github.johnrengelman.shadow'
+    apply plugin: "com.automationanywhere.command-codegen"
 
-if (!(aaVersion == version.toString() || aaVersion.startsWith("${version}-"))) {
-    throw new GradleException("packageVersion must start with ${version}")
-}
-
-dependencies {
-    compileOnly files(recoveredDependencies)
-    compileOnly sdkJars
-    testImplementation files(recoveredDependencies)
-    testImplementation sdkJars
-}
-
-tasks.withType(JavaCompile).configureEach {
-    options.encoding = 'UTF-8'
-    options.release = 11
-    options.compilerArgs += ['-proc:none']
-}
-
-tasks.named('processResources') {
-    exclude 'package.template'
-    inputs.property('aaVersion', aaVersion)
-    doLast {
-        def packageFile = new File(destinationDir, 'package.json')
-        def metadata = new JsonSlurper().parse(packageFile)
-        metadata.packageVersion = aaVersion
-        metadata.codeVersion = aaVersion
-        packageFile.setText(JsonOutput.prettyPrint(JsonOutput.toJson(metadata)) + '\n', 'UTF-8')
+    ext {
+        groupName = 'com.automationanywhere'
+        testNgVersion = '7.7.0'
+        loggerVersion = '2.24.3'
+        jnaVersion = '5.3.1'
+        version '1.0.4'
     }
+    group "$groupName"
+
+    sourceCompatibility = JavaVersion.VERSION_11
+
+    compileJava.options.encoding = 'UTF-8'
+    compileTestJava.options.encoding = 'UTF-8'
+
+    repositories {
+        mavenCentral()
+        flatDir {
+            dirs 'libs'
+        }
+    }
+
+
+    packageJson {
+        artifactName = project.name
+        group = "$groupName"
+        author = "Adrián Martinez"
+        generatePackageWithDateTime = true
+    }
+
+    jar.dependsOn commandCodeGen
+
+    shadowJar {
+        // En Gradle 7 podés usar set(...) (recomendado) o asignación clásica.
+        archiveBaseName.set(project.name)
+        archiveClassifier.set("")          // genera <nombre>-<version>.jar
+
+        // Importante para JDBC: fusiona archivos de servicios (descubrir el driver)
+        mergeServiceFiles('META-INF/spring.*')
+        mergeServiceFiles('META-INF/services/java.sql.Driver')
+
+        zip64 = true
+
+        exclude 'META-INF/MANIFEST.MF'
+        exclude 'META-INF/*.SF'
+        exclude 'META-INF/*.DSA'
+        exclude 'META-INF/*.RSA'
+
+        relocate 'org.apache.commons.io', 'botframework.shaded.commons.io'
+    }
+
+// Para que el build produzca el shadow JAR “final”
+    tasks.named('build') { dependsOn tasks.shadowJar }
+
+// Asegurá que el codegen corra antes del sombreado (tu jar ya dependía del codegen)
+    tasks.named('shadowJar') { dependsOn tasks.named('commandCodeGen') }
+
+
+    dependencies {
+        annotationProcessor name: 'package-compileonly-sdk', version: '1.5.0'
+        compileOnly        name: 'package-compileonly-sdk', version: '1.5.0'
+
+        implementation     name: 'package-runtime-sdk',      version: '1.0.0'
+
+        testImplementation name: 'package-compileonly-sdk',  version: '1.5.0'
+        testImplementation group: "org.testng", name:"testng", version: "$testNgVersion"
+        testImplementation 'com.google.protobuf:protobuf-java:4.30.2' // table/record
+
+        implementation 'org.json:json:20250107'
+        implementation group: "org.apache.logging.log4j", name: "log4j-api",  version: "$loggerVersion"
+        implementation group: "org.apache.logging.log4j", name: "log4j-core", version: "$loggerVersion"
+        implementation 'commons-io:commons-io:2.19.0'
+        implementation 'org.apache.poi:poi-ooxml:5.4.1'
+        implementation 'org.apache.commons:commons-csv:1.14.0'
+
+        // ⬇ Driver JDBC para MS Access (trae Jackcess, HSQLDB, etc. como transitivas)
+        implementation 'net.sf.ucanaccess:ucanaccess:5.0.1'
+
+        // Solo si algún día abrís .accdb encriptados:
+        // implementation 'com.healthmarketscience.jackcess:jackcess-encrypt:3.0.1'
+    }
+
+
 }
 
+// The SDK declares ordering only; these dependencies also support a standalone invocation.
+tasks.named('commandCodeGen') {
+    dependsOn tasks.named('compileJava'), tasks.named('processResources')
+}
+
+tasks.named('test') {
+    useTestNG()
+}
+
+// Keep the plain Java archive separate from the final shaded Automation Anywhere package.
 tasks.named('jar') {
-    archiveBaseName = project.name
-    archiveVersion = aaVersion
-    archiveClassifier = ''
-    zip64 = true
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-    preserveFileTimestamps = false
-    reproducibleFileOrder = true
-    from(zipTree(recoveredDependencies)) {
-        exclude 'META-INF/MANIFEST.MF', 'META-INF/*.SF', 'META-INF/*.RSA', 'META-INF/*.DSA'
-    }
+    archiveClassifier.set('thin')
 }
 
 tasks.register('smokeTest', JavaExec) {
     group = 'verification'
-    description = 'Run recovery regression checks against the packaged JAR.'
-    dependsOn tasks.named('jar'), tasks.named('testClasses')
-    classpath = files(sourceSets.test.output, tasks.named('jar').flatMap { it.archiveFile }) + configurations.testRuntimeClasspath
+    description = 'Run recovery regression checks against the final package.'
+    dependsOn tasks.named('shadowJar'), tasks.named('testClasses')
+    classpath = files(sourceSets.test.output, tasks.named('shadowJar').flatMap { it.archiveFile }) + configurations.testRuntimeClasspath
     mainClass = 'RecoverySmoke'
 }
 
 tasks.register('verifyPackage') {
     group = 'verification'
-    description = 'Verify recovered classes, metadata and resources in the output package.'
-    dependsOn tasks.named('jar')
+    description = 'Compare the generated package contract with the recovered published package.'
+    dependsOn tasks.named('shadowJar')
     doLast {
-        def inventory = new JsonSlurper().parse(file('recovery/inventario-original.json'))
-        new ZipFile(tasks.named('jar').get().archiveFile.get().asFile).withCloseable { zip ->
-            def missing = (inventory.compiledClasses + inventory.extractedResources).findAll { zip.getEntry(it) == null }
-            if (missing) throw new GradleException("Missing package entries: ${missing}")
-            def meta = new JsonSlurper().parse(zip.getInputStream(zip.getEntry('package.json')))
-            if (meta.packageVersion != aaVersion || meta.codeVersion != aaVersion) {
-                throw new GradleException('Incorrect package version')
-            }
-            if (meta.commands != new JsonSlurper().parse(file('src/main/resources/package.json')).commands) {
-                throw new GradleException('Command metadata changed during packaging')
-            }
-            meta.commands.each { cmd ->
-                if (zip.getEntry(cmd.mainClass.replace('.', '/') + '.class') == null) {
-                    throw new GradleException("Missing command implementation: ${cmd.mainClass}")
+        def parser = new groovy.json.JsonSlurper()
+        def baseline = parser.parse(file('recovery/package-original.json'))
+        def inventory = parser.parse(file('recovery/inventario-original.json'))
+        new java.util.zip.ZipFile(tasks.named('shadowJar').get().archiveFile.get().asFile).withCloseable { zip ->
+            def metadata = parser.parse(zip.getInputStream(zip.getEntry('package.json')))
+            ['commands', 'conditionals'].each { category ->
+                def expected = baseline[category].collectEntries { [(it.name): it] }
+                def actual = metadata[category].collectEntries { [(it.name): it] }
+                // The published CopyFile text referenced a parameter that never existed.
+                // Keep its input contract while fixing that display text in the source annotations.
+                if (category == 'commands') {
+                    [expected, actual].each { commands ->
+                        commands.device_copy_file.remove('nodeLabel')
+                        commands.device_copy_file.attributes.find { it.name == 'destinationPath' }.remove('description')
+                    }
+                }
+                if (expected != actual) {
+                    throw new GradleException("Generated ${category} differ from the recovered contract")
                 }
             }
-            println "Verified ${inventory.compiledClasses.size()} classes and ${meta.commands.size()} commands; version ${aaVersion}"
+            def missing = (inventory.compiledClasses + inventory.extractedResources).findAll { zip.getEntry(it) == null }
+            if (missing) throw new GradleException("Missing entries: ${missing}")
+            if (!metadata.packageVersion.startsWith(project.version.toString() + '-') || metadata.codeVersion != metadata.packageVersion) {
+                throw new GradleException('Invalid generated package version')
+            }
+            println "Verified ${metadata.commands.size()} commands, ${metadata.conditionals.size()} condition and ${inventory.compiledClasses.size()} recovered classes"
         }
     }
 }

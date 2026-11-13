@@ -1,21 +1,56 @@
-/*
- * Decompiled with CFR 0.152.
- */
 package com.automationanywhere.botcommand.actions.conversion;
+
+import java.util.regex.Pattern;
 
 import com.automationanywhere.botcommand.data.Value;
 import com.automationanywhere.botcommand.data.impl.StringValue;
 import com.automationanywhere.botcommand.exception.BotCommandException;
+import com.automationanywhere.commandsdk.annotations.*;
+import com.automationanywhere.commandsdk.model.AttributeType;
+import com.automationanywhere.commandsdk.model.DataType;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.regex.Pattern;
 
+@BotCommand
+@CommandPkg(
+        name = "reformat_number_string",
+        label = "Formatear Número (String)",
+        node_label = "Formatear {{amount}} como {{targetFormat}}",
+        description = "Convierte un número en texto a otro formato textual (separadores y decimales) manteniendo el valor.",
+        group_label = "Conversion",
+        icon = "conversion.svg",
+        return_type = DataType.STRING,
+        return_label = "Número formateado"
+)
 public class ReformatNumberString {
-    public Value<String> action(String amount, String targetFormat) {
+
+    @Execute
+    public Value<String> action(
+            @Idx(index = "1", type = AttributeType.TEXT)
+            @Pkg(
+                    label = "Importe (String)",
+                    description = "Ej: 123 | 1,234.56 | 1.234,56 | $-1,234.56 | (123) | \"123\""
+            )
+            String amount,
+
+            @Idx(
+                    index = "2",
+                    type = AttributeType.SELECT,
+                    options = {
+                            @Idx.Option(index = "2.1", pkg = @Pkg(label = "d.ddd,dd", value = "d.ddd,dd")),
+                            @Idx.Option(index = "2.2", pkg = @Pkg(label = "d,ddd.dd", value = "d,ddd.dd")),
+                            @Idx.Option(index = "2.3", pkg = @Pkg(label = "dddd.dd",  value = "dddd.dd")),
+                            @Idx.Option(index = "2.4", pkg = @Pkg(label = "dddd,dd",  value = "dddd,dd")),
+                    }
+            )
+            @Pkg(label = "Formato de salida")
+            String targetFormat
+    ) {
         Character groupSep;
         char decimalSep;
         if (amount == null || amount.trim().isEmpty()) {
-            throw new BotCommandException("El valor no puede estar vac\u00edo.");
+            throw new BotCommandException("El valor no puede estar vacío.");
         }
         if (targetFormat == null) {
             throw new BotCommandException("Debe seleccionar un formato de salida.");
@@ -51,6 +86,8 @@ public class ReformatNumberString {
         String formatted = ReformatNumberString.formatWithSeparators(bd, decimalSep, groupSep, scale);
         return new StringValue(formatted);
     }
+
+    // ---- Utilidades ----
 
     private static int decimalsFromPattern(String pattern) {
         int idxComma;
@@ -100,27 +137,29 @@ public class ReformatNumberString {
         return out.toString();
     }
 
+    // -------------------- Parser estricto (idéntico al de tu acción) --------------------
+    // Copiado para mantener comportamiento uniforme y sin dependencias cruzadas. [1](https://entaconsulting-my.sharepoint.com/personal/amartinez_entaconsulting_com/Documents/Archivos%20de%20chat%20de%20Microsoft%C2%A0Copilot/StringToNumberSmart.java)
     private static BigDecimal parseStrictAmount(String input) {
         if (input == null) {
             throw new BotCommandException("El valor no puede ser nulo.");
         }
         String s = input.trim();
         if (s.isEmpty()) {
-            throw new BotCommandException("El valor no puede estar vac\u00edo.");
+            throw new BotCommandException("El valor no puede estar vacío.");
         }
         if (s.startsWith("\"") && s.endsWith("\"") || s.startsWith("'") && s.endsWith("'")) {
             if (s.length() < 2) {
-                throw new BotCommandException("Comillas inv\u00e1lidas.");
+                throw new BotCommandException("Comillas inválidas.");
             }
             if ((s = s.substring(1, s.length() - 1).trim()).isEmpty()) {
-                throw new BotCommandException("El valor no puede estar vac\u00edo.");
+                throw new BotCommandException("El valor no puede estar vacío.");
             }
             if (s.indexOf(34) >= 0 || s.indexOf(39) >= 0) {
                 throw new BotCommandException("Las comillas solo pueden envolver el valor completo.");
             }
         }
         if (!s.matches("^[0-9\\.,\\$\\(\\)\\-]+$")) {
-            throw new BotCommandException("Caracteres inv\u00e1lidos. Solo d\u00edgitos, ',', '.', '$', '(', ')', '-'.");
+            throw new BotCommandException("Caracteres inválidos. Solo dígitos, ',', '.', '$', '(', ')', '-'.");
         }
         boolean negative = false;
         if (s.startsWith("$(") && s.endsWith(")")) {
@@ -129,7 +168,7 @@ public class ReformatNumberString {
         } else if (s.startsWith("(") && s.endsWith(")")) {
             negative = true;
             if ((s = s.substring(1, s.length() - 1)).contains("$")) {
-                throw new BotCommandException("El s\u00edmbolo '$' debe estar al inicio absoluto.");
+                throw new BotCommandException("El símbolo '$' debe estar al inicio absoluto.");
             }
         } else {
             if (s.startsWith("$-")) {
@@ -145,17 +184,17 @@ public class ReformatNumberString {
                 s = s.substring(1);
             }
             if (s.indexOf(45) >= 0) {
-                throw new BotCommandException("El '-' solo puede ir al inicio (o inmediatamente despu\u00e9s de '$').");
+                throw new BotCommandException("El '-' solo puede ir al inicio (o inmediatamente después de '$').");
             }
             if (s.indexOf(40) >= 0 || s.indexOf(41) >= 0) {
-                throw new BotCommandException("Los par\u00e9ntesis deben envolver todo el n\u00famero.");
+                throw new BotCommandException("Los paréntesis deben envolver todo el número.");
             }
             if (s.indexOf(36) >= 0) {
                 throw new BotCommandException("El '$' debe estar al inicio absoluto.");
             }
         }
         if (s.isEmpty()) {
-            throw new BotCommandException("Falta el valor num\u00e9rico.");
+            throw new BotCommandException("Falta el valor numérico.");
         }
         int countDot = ReformatNumberString.countChar(s, '.');
         int countComma = ReformatNumberString.countChar(s, ',');
@@ -166,7 +205,7 @@ public class ReformatNumberString {
             char decimalSep = lastDot > (lastComma = s.lastIndexOf(44)) ? (char)'.' : ',';
             char c = groupSep = decimalSep == '.' ? (char)',' : '.';
             if (ReformatNumberString.countChar(s, decimalSep) != 1) {
-                throw new BotCommandException("Formato inv\u00e1lido: m\u00faltiples separadores decimales.");
+                throw new BotCommandException("Formato inválido: múltiples separadores decimales.");
             }
             return ReformatNumberString.parseWithBothSeps(s, decimalSep, groupSep, negative);
         }
@@ -186,7 +225,7 @@ public class ReformatNumberString {
             throw new BotCommandException("Separadores mal ubicados.");
         }
         if (!s.matches("\\d+")) {
-            throw new BotCommandException("La parte entera debe contener solo d\u00edgitos.");
+            throw new BotCommandException("La parte entera debe contener solo dígitos.");
         }
         BigDecimal bd = new BigDecimal(s);
         return negative ? bd.negate() : bd;
@@ -197,7 +236,7 @@ public class ReformatNumberString {
         String intPart = s.substring(0, idx);
         String fracPart = s.substring(idx + 1);
         if (fracPart.isEmpty() || !fracPart.matches("\\d+")) {
-            throw new BotCommandException("Parte decimal inv\u00e1lida.");
+            throw new BotCommandException("Parte decimal inválida.");
         }
         if (ReformatNumberString.countChar(intPart, decimalSep) > 0) {
             throw new BotCommandException("Separadores inconsistentes en la parte entera.");
@@ -212,7 +251,7 @@ public class ReformatNumberString {
             return negative ? bd.negate() : bd;
         }
         catch (NumberFormatException ex) {
-            throw new BotCommandException("N\u00famero inv\u00e1lido.", ex);
+            throw new BotCommandException("Número inválido.", ex);
         }
     }
 
